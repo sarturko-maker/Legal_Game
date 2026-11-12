@@ -83,4 +83,11 @@ Newest first. One line each. "Who" is `author` or `claude`.
 
 | Date | Milestone | Decision | Who | Why |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-12 | M0 | Screenshots use the Chrome already installed, through its own `--headless=new --screenshot` option. No development dependency. Puppeteer and Playwright were not needed. | claude | First choice in the order PLAN M0 gives, and it works here. |
+| 2026-11-12 | M0 | The Stop hook's script is `.claude/hooks/stop-check.js`, a folder not in SPEC 11. | claude | Kept next to `settings.json`, so the hook works on any branch, with or without `tools/`. |
+| 2026-11-12 | M0 | The scan reads only `.html`, `.css` and `.js` files under the game paths. | claude | Those are what the browser loads. Licence texts kept beside the fonts (M3) are not. |
+| 2026-11-12 | M0 | Without git (a copy downloaded as a ZIP), the repository check passes with a note. | claude | A folder with no git tracks nothing. |
+| 2026-11-12 | M0 | Tests are files in `tools/tests/` that export an object of named functions. A test fails by throwing. | claude | The smallest runner that needs no dependency. |
+| 2026-11-12 | M0 | The title page is styled from `css/base.css`, with only the `--paper` and `--ink` tokens. | claude | SPEC 11: `index.html` only loads files. |
+| 2026-11-12 | M0 | This repository's git email is the GitHub noreply address. | claude | The repository is public, and the global address is personal. |
+| 2026-11-12 | — | Build sessions run in Claude Code on the author's machine, not on the web. `HOW-TO-RUN.md` sections 1, 2 and 7 do not apply as written. | author | The author's choice. |

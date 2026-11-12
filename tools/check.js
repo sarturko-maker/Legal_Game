@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const GAME_PATHS = ['index.html', 'text.html', 'css', 'src', 'packs'];
 const LOADED = /\.(html|css|js)$/;
 
-const CODE_RULES = [
+const RULES = [
   ['import or export statement', /^\s*(import|export)\b\s*[\w{*'"]|\bimport\s*\(/],
   ['type="module"', /type\s*=\s*["']?module\b/i],
   ['fetch(', /\bfetch\s*\(/],
@@ -49,40 +49,26 @@ function gameFiles() {
   return files;
 }
 
-// Code patterns are looked for in code only, so that a comment may name what the code
-// avoids. Comments are blanked rather than removed, to keep line numbers right.
-function codeOnly(text, isJs) {
-  const blank = (m) => m.replace(/[^\n]/g, ' ');
-  const out = text.replace(BLOCK_COMMENT, blank);
-  return isJs ? out.replace(/\/\/.*$/gm, blank) : out;
-}
-
-function lineAt(text, index) {
-  return text.slice(0, index).split('\n').length;
+// Everything is scanned, comments included. SPEC 12.1 allows two exceptions only: licence
+// text inside a comment, and the SVG namespace. Licence comments are blanked rather than
+// removed, to keep line numbers right.
+function withoutLicences(text) {
+  return text.replace(BLOCK_COMMENT, (m) => (/licen[cs]e/i.test(m) ? m.replace(/[^\n]/g, ' ') : m));
 }
 
 function scanFile(rel) {
-  const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const text = withoutLicences(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  const rules = rel.startsWith('src/core/') ? RULES.concat(CORE_RULES) : RULES;
   const problems = [];
-  const rules = rel.startsWith('src/core/') ? CODE_RULES.concat(CORE_RULES) : CODE_RULES;
-
-  codeOnly(text, rel.endsWith('.js')).split('\n').forEach((line, i) => {
+  text.split('\n').forEach((line, i) => {
+    const at = rel + ':' + (i + 1) + '  ';
     for (const [name, re] of rules) {
-      if (re.test(line)) problems.push(rel + ':' + (i + 1) + '  ' + name);
+      if (re.test(line)) problems.push(at + name);
+    }
+    for (const m of line.matchAll(ADDRESS)) {
+      if (!m[0].startsWith(SVG_NAMESPACE)) problems.push(at + 'web address ' + m[0]);
     }
   });
-
-  // Addresses are looked for everywhere, comments included. The exceptions are the SVG
-  // namespace and licence text inside a comment.
-  const licences = [];
-  for (const m of text.matchAll(BLOCK_COMMENT)) {
-    if (/licen[cs]e/i.test(m[0])) licences.push([m.index, m.index + m[0].length]);
-  }
-  for (const m of text.matchAll(ADDRESS)) {
-    if (m[0].startsWith(SVG_NAMESPACE)) continue;
-    if (licences.some(([from, to]) => m.index >= from && m.index < to)) continue;
-    problems.push(rel + ':' + lineAt(text, m.index) + '  web address ' + m[0]);
-  }
   return problems;
 }
 
