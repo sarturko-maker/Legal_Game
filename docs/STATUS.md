@@ -37,7 +37,3 @@ the end of every milestone. Keep it under 40 lines.
 - M3: `tools/shots.js` drives Chrome over its DevTools pipe (decided at check-in 0).
 - M4: SPEC 6.3 turns face-down pages over "at the same place", but `s1` puts them down at
   `supply` and turns them at `law`. Raise it at M4.
-
-## Next
-
-Finish M1, then check-in 1.
