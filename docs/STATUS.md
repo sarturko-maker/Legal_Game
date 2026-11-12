@@ -5,35 +5,39 @@ the end of every milestone. Keep it under 40 lines.
 
 ## Now
 
-- **Current milestone:** M0 built. Waiting for check-in 0.
-- **Last check-in:** M0, 2026-11-12.
-- **Branch:** `m0-skeleton`, pull request open. `main` holds the documents only.
+- **Current milestone:** M1, engine and scenario 1 in text. In progress, solo mode.
+- **Last check-in:** M0, merged 2026-11-12. Check-in 0 answers are in the decision log.
+- **Branch:** `m1-engine-s1`.
+- **The author wants to move through the milestones quickly, and to see the game.**
+
+## M1 checklist
+
+- [x] Check-in 0 recorded. PACK-FORMAT and SPEC widened to fit the scripts (see the log).
+- [ ] `src/core/packs.js`: registry, placeholders (PACK-FORMAT 4), validation (6, rules 1-7).
+- [ ] `src/core/engine.js`: SPEC 5.1. `s1` already needs `text` and `next` as functions.
+- [ ] `packs/public.js`: house, cast, and `s1` copied exactly from its script.
+- [ ] `text.html`: each view as text, buttons, then ledger, what-ifs, lessons, In real life.
+- [ ] `tools/transcript.js <scenario> <path...>`.
+- [ ] `tools/check.js`: pack validation, `s1` fixture replay (rule 8), engine tests.
+- [ ] Checks: all 5 paths in `s1-paths.json`; `node tools/transcript.js s1 pack law law`.
+- [ ] `spec-reviewer`, STATUS, log, commit, push, pull request, check-in 1.
 
 ## What exists
 
-- Documents in `docs/`. Fixtures in `docs/scenarios/fixtures/`. Check-in screenshots in
-  `docs/checkins/`.
-- Agent definitions in `.claude/agents/`. Rules in `.claude/rules/`. A Stop hook in
-  `.claude/settings.json` runs `.claude/hooks/stop-check.js`, which runs the check.
-- `index.html`: the title on the paper colour, styled by `css/base.css`. It loads
-  `src/core/namespace.js`, which creates `B2B`.
-- `tools/check.js`: forbidden-pattern scan, repository check, test runner (0 tests). The
-  scan reads comments too, so in `src/core/` not even a comment may say `Date`, `window`,
-  `document` or `Math.random`.
-- `tools/shots.js`: screenshots with the installed Chrome, through its own `--screenshot`
-  option. It cannot drive the game through the debug hooks yet.
-- No engine, packs, `text.html`, art or fonts.
+- M0: `index.html` title page, `tools/check.js`, `tools/shots.js` (installed Chrome), and
+  a Stop hook that runs the check.
+- In `src/core/`, not even a comment may say `Date`, `window`, `document` or `Math.random`.
 
 ## Commands that work today
 
-- `node tools/check.js` (or `npm run check`)
-- `node tools/shots.js` (or `npm run shots`): writes `shots/m0-title-*.png`
-- `node docs/scenarios/fixtures/make-fixtures.js` (or `npm run fixtures`)
+- `node tools/check.js`, `node tools/shots.js`, `node docs/scenarios/fixtures/make-fixtures.js`
 
-## Waiting on the author
+## For later milestones
 
-- Check-in 0: open `index.html`; D1 to D6 in `docs/DECISIONS.md`; the M0 questions.
+- M3: `tools/shots.js` drives Chrome over its DevTools pipe (decided at check-in 0).
+- M4: SPEC 6.3 turns face-down pages over "at the same place", but `s1` puts them down at
+  `supply` and turns them at `law`. Raise it at M4.
 
 ## Next
 
-M1: engine and scenario 1, in text. Starts only after the author's go-ahead.
+Finish M1, then check-in 1.
