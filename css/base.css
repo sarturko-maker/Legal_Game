@@ -1,0 +1,27 @@
+/* Tokens from docs/ART.md section 4: only the ones in use so far. */
+:root {
+  --paper: #F1E4C9;
+  --ink: #2B211C;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  color: var(--ink);
+  /* A system serif until the embedded faces arrive in M3. */
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+h1 {
+  margin: 0;
+  font-size: 8vw;
+  font-weight: normal;
+}

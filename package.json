@@ -1,0 +1,10 @@
+{
+  "name": "back-to-back",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node tools/check.js",
+    "shots": "node tools/shots.js",
+    "fixtures": "node docs/scenarios/fixtures/make-fixtures.js"
+  }
+}
