@@ -1,0 +1,9 @@
+# Private content. Never commit.
+packs/private.js
+
+# Development only
+node_modules/
+shots/
+*.log
+.DS_Store
+Thumbs.db
