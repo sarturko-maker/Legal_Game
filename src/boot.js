@@ -181,8 +181,9 @@
     intro();
   }
 
+  // Skip: a deal played to its ledger keeps its result; one cut short has none.
   function skip() {
-    session.deals = session.deals.slice(0, session.index);
+    if (mode !== 'ledger') session.deals = session.deals.slice(0, session.index);
     nextDeal();
   }
 
@@ -225,9 +226,13 @@
       return;
     }
     if (!go) return;
-    e.preventDefault();
-    if (mode === 'deal') director.press();
-    else if (screen && screen.press) screen.press();
+    if (mode === 'deal') {
+      e.preventDefault();
+      director.press();
+    } else if (screen && screen.press) {
+      e.preventDefault();
+      screen.press();
+    }
   }
 
   // A click on the scene itself skips a walk, a run or the train.

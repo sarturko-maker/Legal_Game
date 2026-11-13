@@ -296,12 +296,13 @@
     return h;
   }
 
-  // A stiff printed card: the title in display type, the numbered points, small print.
+  // A stiff printed card: the title in display type, its small print, the numbered points.
   function card(parent, view, ctx, onContinue) {
     const prop = el('div', 'prop printcard', parent);
     if (view.title) el('h2', '', prop, view.title);
-    paragraphs(el('div', 'points', prop), view.text);
+    // The small print goes under the title (PACK-FORMAT): it names the thing the card is about.
     if (view.small) el('p', 'small', prop, view.small);
+    paragraphs(el('div', 'points', prop), view.text);
     const h = handle(prop, tilt(view.title || view.text.join(' ')), onContinue, ctx.onComplete);
     h.complete();
     return h;
@@ -347,11 +348,14 @@
   // works only at the right count (SPEC 6.4, ART 9).
   function pick(parent, view, ctx, onPick) {
     const prop = el('div', 'prop panel pickpanel', parent);
-    const head = el('div', 'prompt', prop);
-    const c = ctx.cast[view.who];
-    if (c && c.look) el('span', 'oval', head).innerHTML = B2B.figures.portrait(c.look);
-    el('span', '', head, view.prompt);
-    if (view.hint) el('div', 'hint', prop, view.hint);
+    el('div', 'prompt', prop, view.prompt);
+    // The hint is the speaker's line (PACK-FORMAT: who and hint), so the portrait goes with it.
+    if (view.hint) {
+      const hint = el('div', 'hint', prop);
+      const c = ctx.cast[view.who];
+      if (c && c.look) el('span', 'oval', hint).innerHTML = B2B.figures.portrait(c.look);
+      el('span', '', hint, view.hint);
+    }
     const chosen = [];
     let done = false;
     const tickets = view.options.map(function (o, i) {

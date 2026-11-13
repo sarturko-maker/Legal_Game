@@ -44,7 +44,7 @@ const SHOTS = [
   { name: 'm4-paper', run: J(['clone'], 'later'), wait: 1400 },
   { name: 'm4-end-claim', run: J(['clone']), wait: 900 },
   { name: 'm4-end-lost', run: J(['pack', 'law', 'standfirm']), instant: true, wait: 900 },
-  { name: 'm4-end-deal', run: J(['pack', 'law', 'law']), wait: 1500 },
+  { name: 'm4-end-deal', run: J(['pack', 'law', 'law']), wait: 1500, both: true },
   { name: 'm4-ledger-deal', run: J(['pack', 'law', 'law']), instant: true, keys: [' '], wait: 1500 },
   { name: 'm4-ledger-claim', run: J(['clone']), instant: true, keys: [' '], wait: 1500 },
   { name: 'm4-whatif', run: J(['clone']), instant: true, keys: [' ', ' ', ' '], wait: 700 },
@@ -185,9 +185,13 @@ async function main() {
       let i = 0;
       let deal = -1;
       let seen = null;
+      let walked = false;
+      let typed = false;
       for (let n = 0; n < 600; n += 1) {
-        const at = await evaluate("(() => { const st = B2B.debug.state(); const live = (s) => document.querySelector(s + ':not([style*=absolute])'); return { mode: B2B.debug.mode(), node: st && st.nodeId, pick: !!live('.pickpanel'), choice: !!live('.panel:not(.pickpanel)'), ledger: (document.querySelector('.ending .result:not(.later) td.amount') || {}).textContent || null, debrief: !!live('.debrief'), total: (document.querySelector('.yearend .result td.amount') || {}).textContent || null }; })()");
-        if (at.mode === 'yearend') return { deals, keysUsed, total: at.total };
+        const at = await evaluate("(() => { const st = B2B.debug.state(); const live = (s) => document.querySelector(s + ':not([style*=absolute])'); return { walking: !!document.querySelector('.figure.player.walking'), typing: document.querySelectorAll('.telegram .later').length > 0, mode: B2B.debug.mode(), node: st && st.nodeId, pick: !!live('.pickpanel'), choice: !!live('.panel:not(.pickpanel)'), ledger: (document.querySelector('.ending .result:not(.later) td.amount') || {}).textContent || null, debrief: !!live('.debrief'), total: (document.querySelector('.yearend .result td.amount') || {}).textContent || null }; })()");
+        if (at.walking) walked = true;
+        if (at.typing) typed = true;
+        if (at.mode === 'yearend') return { deals, keysUsed, total: at.total, walked, typed };
         if (at.mode === 'intro' && seen !== 'intro') {
           deal += 1;
           i = 0;
@@ -366,9 +370,9 @@ async function main() {
       await press('Enter');
       const run = await drive([['clone'], ['refuse', 'walk']], 300);
       const total = money(-19998500);
-      const ok = run.total === total;
-      if (!ok) errors.push('reduced motion session: ' + run.total);
-      console.log('reduce  ' + (ok ? 'ok  ' : 'FAIL') + ' a full session with reduced motion: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, year end ' + run.total + ' (expected ' + total + ')');
+      const ok = run.total === total && !run.walked && !run.typed;
+      if (!ok) errors.push('reduced motion session: ' + JSON.stringify(run));
+      console.log('reduce  ' + (ok ? 'ok  ' : 'FAIL') + ' a full session with reduced motion: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, year end ' + run.total + ' (expected ' + total + '), walked ' + run.walked + ', typed ' + run.typed);
       await page('Emulation.setEmulatedMedia', { features: [] });
     }
 

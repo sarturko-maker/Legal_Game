@@ -5,35 +5,35 @@ the end of every milestone. Keep it under 40 lines.
 
 ## Now
 
-- **Current milestone:** M4, the whole town and scenario 1 in it (branch `m4-town-s1`).
-- **Open pull requests**, stacked, for the author to merge in order: #2 M1, #3 M2, #4 M3.
+- **Current milestone:** M5, scenario 2 in the town and the session (branch `m5-s2-session`).
+- **Open pull requests**, stacked, to merge in order: #2 M1, #3 M2, #4 M3, #5 M4.
 
 ## What exists
 
 - M0-M2: `tools/check.js`, `tools/shots.js`, Stop hook; `src/core/{packs,engine}.js`,
   `packs/public.js` (`s1`, `s2`), `text.html`, `tools/{transcript,load}.js`, tests, 150 fixture paths.
 - M3: fonts and licences, `css/base.css`, `css/props.css`, `src/render/{town,stage,figures,props}.js`.
-- M4: `index.html` plays `s1` start to debrief. The whole street, five moods, the clerk,
-  the lawyer, the runner, the train, every `s1` prop, `src/render/director.js`,
-  `src/ui/ledger.js` (ledger, what-ifs, debrief), `src/ui/screens.js` (intro card, menu,
-  pack-problem screen). `B2B.session` is a stub in `boot.js` until M5.
+- M4: the whole street, five moods, cast, runner, train, every `s1` prop, the director,
+  `src/ui/ledger.js` (ledger, what-ifs, debrief), `src/ui/screens.js`.
+- M5: the full game. Title, set-up, both deals, year end, large text, walking off, the
+  menu. Pick panel, card, week, Mr Dade. The session is in `src/boot.js`.
 - `src/core/`: not even a comment may say `Date`, `window`, `document` or `Math.random`.
 
 ## Commands that work today
 
 - `node tools/check.js`: scan, packs, fixtures, tests, repository.
 - `node tools/transcript.js s1 pack law law`, `npm run fixtures`.
-- `node tools/shots.js [names] [--paths] [--keys] [--frames]`: `--paths` plays every `s1`
-  path through the screen and checks the ledger; `--keys` plays one at full speed by
-  keyboard, then by mouse, the menu, and with reduced motion.
+- `node tools/shots.js [names] [--paths] [--keys] [--frames]`: `--paths` plays 11 paths
+  and a session through the screen against the fixtures; `--keys` a full session by
+  keyboard, a mouse run, and a session with reduced motion.
 - Open `index.html` or `text.html` from disk. `?debug=1`: overlay, `B2B.debug.jump(...)`.
 
 ## Open questions for the author (suggested answers stand meanwhile)
 
 - `s1`, `s2` blurbs and minutes; D3; `s2` `protest` lead "MR Dade AGREED" (not in capitals).
-- M3 look, blur behind props, Rye whole or cut down: questions on PR #4.
+- M3 look, blur, Rye (PR #4). Page turns and the face-down title (PR #5). Pitch line.
+- Check-in 5: agree the wildcard alternatives for M6 (slot tables in each script).
 
 ## For later milestones
 
-- M5: set-up, year end, real `B2B.session`, the other menu entries, `card` and pick on screen.
 - M6: when a private pack replaces `s1`, check the game starts the replacement.
