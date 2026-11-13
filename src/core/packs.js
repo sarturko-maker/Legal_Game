@@ -231,6 +231,8 @@
     house: house,
     cast: cast,
     problems: function () { return found.slice(); },
+    // The packs loaded, for the result record (SPEC 5.3).
+    loaded: function () { return registered.map(function (pack) { return { id: pack.id, version: pack.version }; }); },
     validate: validate,
     fill: fill,
     number: number

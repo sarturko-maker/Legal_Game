@@ -47,24 +47,30 @@
     return '<text class="signink" x="' + cx + '" y="' + y + '" font-size="' + size + '" text-anchor="middle"' + fit + '>' + escape(text) + '</text>';
   }
 
-  // Layer 1: the sun and a few long clouds.
+  // Layer 1: the sun or the moon, and a few long clouds. Low, fast cloud in a storm.
   function sky(mood) {
     const w = 1920 + 0.02 * SPAN;
     let body = '';
-    if (mood === 'dusk') {
-      body += '<circle class="sun" cx="236" cy="640" r="74"/>';
-    } else {
-      body += '<circle class="sun" cx="1520" cy="175" r="44"/>';
+    if (mood === 'day') body += '<circle class="sun" cx="1520" cy="175" r="44"/>';
+    if (mood === 'dusk') body += '<circle class="sun" cx="236" cy="640" r="74"/>';
+    if (mood === 'dawn') body += '<circle class="sun" cx="1660" cy="560" r="64"/>';
+    if (mood === 'night') {
+      for (let i = 0; i < 90; i += 1) {
+        body += '<circle class="star" cx="' + n(vary(i, 40) * w) + '" cy="' + n(vary(i, 41) * 520) + '" r="' + n(0.8 + vary(i, 42) * 1.6) + '"/>';
+      }
+      body += '<circle class="halo" cx="1540" cy="190" r="110"/><circle class="sun" cx="1540" cy="190" r="40"/>';
     }
     let clouds = '';
-    for (let i = 0; i < 7; i += 1) {
-      const x = 120 + i * 300 + vary(i, 1) * 120;
-      const y = 120 + vary(i, 2) * 260;
-      const len = 260 + vary(i, 3) * 320;
-      clouds += '<ellipse class="cloud" cx="' + n(x) + '" cy="' + n(y) + '" rx="' + n(len / 2) + '" ry="' + n(7 + vary(i, 4) * 7) + '"/>';
-      clouds += '<ellipse class="cloud" cx="' + n(x + len * 0.18) + '" cy="' + n(y - 8) + '" rx="' + n(len / 4) + '" ry="' + n(6 + vary(i, 5) * 5) + '"/>';
+    const count = mood === 'storm' ? 12 : 7;
+    for (let i = 0; i < count; i += 1) {
+      const x = 120 + i * (mood === 'storm' ? 190 : 300) + vary(i, 1) * 120;
+      const y = mood === 'storm' ? 160 + vary(i, 2) * 300 : 120 + vary(i, 2) * 260;
+      const len = (mood === 'storm' ? 520 : 260) + vary(i, 3) * 320;
+      const thick = mood === 'storm' ? 26 : 7;
+      clouds += '<ellipse class="cloud" cx="' + n(x) + '" cy="' + n(y) + '" rx="' + n(len / 2) + '" ry="' + n(thick + vary(i, 4) * thick) + '"/>';
+      clouds += '<ellipse class="cloud" cx="' + n(x + len * 0.18) + '" cy="' + n(y - thick) + '" rx="' + n(len / 4) + '" ry="' + n(thick * 0.8 + vary(i, 5) * 5) + '"/>';
     }
-    body += '<g class="alive drift">' + clouds + '</g>';
+    body += '<g class="alive drift' + (mood === 'storm' ? ' fast' : '') + '">' + clouds + '</g>';
     return svg(w, body);
   }
 
@@ -207,18 +213,95 @@
     return s;
   }
 
-  // Layer 5: the street. This milestone draws x 1,400 to 4,000: the telegraph office and the
-  // supply company, the alley between them, and what stands in front.
-  function street(house) {
+  // A boardwalk under a run of fronts, with its shadow and steps.
+  function boardwalk(x0, x1) {
+    let t = rect('shade', x0 - 20, GROUND + 22, x1 - x0 + 60, 26);
+    t += rect('walk', x0, GROUND - 2, x1 - x0, 22) + rect('wood2', x0, GROUND + 18, x1 - x0, 6);
+    for (let x = x0 + 30; x < x1; x += 120) t += rect('wood2', x, GROUND + 24, 8, 14);
+    return t;
+  }
+
+  // At dawn the low sun in the east throws long shadows west across the street.
+  function longShadow(x0, x1) {
+    return path('longshadow', 'M' + x0 + ' ' + GROUND + ' L' + x1 + ' ' + GROUND + ' L' + (x1 - 300) + ' 905 L' + (x0 - 300) + ' 905 Z');
+  }
+
+  // A hanging sign on a bracket that swings a little (hard, in a storm).
+  function shingle(x, y, emblem) {
+    return rect('wood2', x - 30, y - 6, 60, 6) + '<g transform="translate(' + x + ' ' + y + ')"><g class="alive swing">' +
+      rect('wood2', -2, 0, 4, 22) + rect('wood2', -42, 20, 84, 56) + rect('signboard', -36, 26, 72, 44) +
+      path('signink', emblem) + '</g></g>';
+  }
+  const EMBLEMS = {
+    anvil: 'M-26 42 L18 42 L26 36 L28 46 L14 48 L10 58 L16 66 L-16 66 L-10 58 L-14 48 L-26 48 Z',
+    scales: 'M-1 32 L1 32 L1 62 L10 62 L10 66 L-10 66 L-10 62 L-1 62 Z M-24 38 L24 38 L24 40 L-24 40 Z M-30 52 Q-22 60 -14 52 Z M14 52 Q22 60 30 52 Z M-23 40 L-29 52 L-28 52 L-22 41 L-16 52 L-15 52 Z M23 40 L17 52 L18 52 L23 42 L28 52 L30 52 Z',
+    lantern: 'M-8 34 L8 34 L10 40 L10 60 L8 66 L-8 66 L-10 60 L-10 40 Z'
+  };
+
+  function streetLamp(x) {
+    return rect('wood2', x, 600, 10, 230) + rect('wood2', x - 14, 584, 38, 30) +
+      '<circle class="lampglow alive flicker" cx="' + (x + 5) + '" cy="600" r="120" fill="url(#lamp)"/>' + rect('win', x - 6, 590, 22, 18);
+  }
+
+  function fence(x0, x1) {
+    let t = '';
+    for (let x = x0; x < x1; x += 70) t += rect('wood2', x, 760, 10, 70);
+    return t + rect('wood2', x0, 772, x1 - x0, 8) + rect('wood2', x0, 800, x1 - x0, 8);
+  }
+
+  function track(x0, x1) {
+    let t = rect('wood2', x0, 858, x1 - x0, 5) + rect('wood2', x0, 872, x1 - x0, 5);
+    for (let x = x0 + 6; x < x1; x += 34) t += rect('wood2', x, 855, 10, 26);
+    return t;
+  }
+
+  // Stone fronts, for the bank and the courthouse.
+  function stoneFront(x0, x1, top) {
+    let t = rect('stone', x0, top, x1 - x0, GROUND - top) + rect('rim', x0, top, 6, GROUND - top);
+    for (let y = top + 40; y < GROUND; y += 40) t += rect('stone2', x0, y, x1 - x0, 2);
+    t += rect('stone2', x0 - 14, top - 18, x1 - x0 + 28, 20);
+    for (let x = x0 - 10; x < x1 + 10; x += 22) t += rect('stone2', x, top + 2, 12, 10);
+    return t;
+  }
+
+  // Layer 5: the street, west to east (ART 5): depot, telegraph office, supply company,
+  // bank, law office, courthouse, saloon and stable, and the site office at the yard.
+  function street(house, mood) {
     const w = 1920 + SPAN;
     let s = rect('ground', 0, GROUND, w, H - GROUND) + rect('ground2', 0, 1010, w, 70);
     for (let i = 0; i < 18; i += 1) {
       s += '<ellipse class="ground2" cx="' + n(i * 560 + vary(i, 30) * 200) + '" cy="' + n(930 + vary(i, 31) * 90) + '" rx="' + n(160 + vary(i, 32) * 200) + '" ry="4"/>';
     }
 
+    // The town's name on a post at the west end, by the track.
+    s += rect('wood2', 236, 700, 12, 130) + rect('wood2', 150, 690, 190, 54) + rect('signboard', 156, 696, 178, 42) +
+      sign((house.town || '').toUpperCase(), 245, 727, 24, 160);
+
+    // The depot: a low station with a deep canopy over the platform, a signal, and the track
+    // running off to the west. A pennant on the roof moves in the wind.
+    const dp = PLACES.depot;
+    s += longShadow(dp - 240, dp + 240);
+    s += track(0, 1500);
+    s += path('wood2', 'M' + (dp - 270) + ' 604 L' + dp + ' 520 L' + (dp + 270) + ' 604 Z');
+    s += rect('wood', dp - 240, 600, 480, 230);
+    for (let y = 626; y < 830; y += 26) s += rect('wood3', dp - 240, y, 480, 3);
+    s += rect('rim', dp - 240, 600, 6, 230);
+    s += rect('wood2', dp - 2, 456, 4, 70);
+    s += '<g transform="translate(' + (dp + 2) + ' 458)"><path class="flag alive wave" d="M0 0 L46 9 L0 20 Z"/></g>';
+    s += rect('wood2', dp - 120, 714, 86, 116) + rect('win', dp - 112, 722, 70, 50);
+    s += rect('wood2', dp + 30, 714, 86, 116) + rect('win', dp + 38, 722, 70, 50);
+    s += rect('win', dp - 210, 712, 70, 70) + rect('win', dp + 150, 712, 70, 70);
+    s += path('wood2', 'M' + (dp - 360) + ' 662 L' + (dp + 360) + ' 662 L' + (dp + 380) + ' 686 L' + (dp - 380) + ' 686 Z');
+    [-340, -110, 110, 340].forEach(function (dx) { s += rect('wood2', dp + dx - 6, 686, 12, GROUND - 686); });
+    s += rect('wood2', dp - 100, 610, 200, 52) + rect('signboard', dp - 94, 616, 188, 40) + sign(signFor('depot', house), dp, 648, 34, 170);
+    s += boardwalk(dp - 420, dp + 440);
+    s += rect('wood2', dp + 470, 500, 12, 330) + rect('wood2', dp + 482, 506, 70, 12) + rect('win', dp + 460, 530, 32, 32);
+    s += '<circle class="lampglow" cx="' + (dp + 476) + '" cy="546" r="70" fill="url(#lamp)"/>';
+
     // The telegraph office, with a stovepipe that smokes.
     const tg = { door: PLACES.telegraph, width: 460, top: 420, signY: 446, signH: 70, signSize: 40,
-      sign: (house.telegraph || '').toUpperCase() };
+      sign: signFor('telegraph', house) };
+    s += longShadow(tg.door - 230, tg.door + 230);
     s += rect('wood2', tg.door - 158, 340, 14, 90) + rect('wood2', tg.door - 162, 336, 22, 8);
     s += '<g transform="translate(' + (tg.door - 151) + ' 330)">' + ['s1', 's2', 's3', 's4', 's5'].map(function (k) {
       return '<circle class="smokepuff alive smoke ' + k + '" r="11"/>';
@@ -226,6 +309,7 @@
     s += falseFront(tg);
     s += rect('win', tg.door - 196, 722, 110, 76) + rect('wood2', tg.door - 143, 722, 4, 76);
     s += rect('win', tg.door + 86, 722, 110, 76) + rect('wood2', tg.door + 139, 722, 4, 76);
+    s += boardwalk(tg.door - 270, tg.door + 270);
 
     // Telegraph poles and the wire running east past the supply company, with birds on it.
     const poles = [tg.door + 270, 2880, 3900];
@@ -243,15 +327,16 @@
         path('wood2', 'M0 0 C4 -10 14 -10 16 -2 L22 -6 L20 2 C14 8 4 8 0 0 Z') + '</g></g>';
     });
 
-    // The alley: a water trough, a bench and a street lamp that glows after dusk.
+    // The alley: a water trough and a street lamp.
     s += rect('wood2', 2420, 800, 150, 34) + rect('wood3', 2420, 800, 150, 6) + rect('wood2', 2428, 834, 10, 14) + rect('wood2', 2552, 834, 10, 14);
-    s += rect('wood2', 2700, 600, 10, 230) + rect('wood2', 2686, 584, 38, 30);
-    s += '<circle class="lampglow alive flicker" cx="2705" cy="600" r="120" fill="url(#lamp)"/>' + rect('win', 2694, 590, 22, 18);
+    s += streetLamp(2700);
+    s += rect('wood2', 1560, 740, 14, 90) + rect('wood2', 1546, 740, 50, 14) + rect('wood2', 1574, 744, 30, 8);
 
     // The supply company: the biggest sign on the street, shutters, a counter in the window,
     // and a hanging shingle that swings.
     const sp = { door: PLACES.supply, width: 700, top: 360, signY: 392, signH: 96, signSize: 58,
-      sign: (house.firm || '').toUpperCase(), upstairs: 3, shutters: true };
+      sign: signFor('supply', house), upstairs: 3, shutters: true };
+    s += longShadow(sp.door - 350, sp.door + 350);
     s += falseFront(sp);
     const win = function (x0, counter) {
       let t = rect('wood2', x0 - 8, 708, 236, 104) + rect('win', x0, 716, 220, 88);
@@ -267,32 +352,125 @@
       return t;
     };
     s += win(sp.door - 330, true) + win(sp.door + 110, false);
-    // A hitching rail in front of the boardwalk.
+    s += boardwalk(sp.door - 390, sp.door + 390);
     s += rect('wood2', sp.door - 250, 846, 12, 60) + rect('wood2', sp.door - 90, 846, 12, 60) + rect('wood2', sp.door - 258, 852, 180, 9);
-    s += '<g transform="translate(' + (sp.door + 300) + ' 694)"><g class="alive swing">' + rect('wood2', -2, 0, 4, 26) +
-      rect('wood2', -44, 24, 88, 58) + rect('signboard', -38, 30, 76, 46) +
-      path('signink', 'M-26 46 L18 46 L26 40 L28 50 L14 52 L10 62 L16 70 L-16 70 L-10 62 L-14 52 L-26 52 Z') + '</g></g>';
+    s += shingle(sp.door + 300, 700, EMBLEMS.anvil);
+    s += fence(3820, 4080);
 
-    // The boardwalk, with steps, under both buildings.
-    [[tg.door - 270, tg.door + 270], [sp.door - 390, sp.door + 390]].forEach(function (b) {
-      s += rect('shade', b[0] - 20, GROUND + 22, b[1] - b[0] + 60, 26);
-      s += rect('walk', b[0], GROUND - 2, b[1] - b[0], 22) + rect('wood2', b[0], GROUND + 18, b[1] - b[0], 6);
-      for (let x = b[0] + 30; x < b[1]; x += 120) s += rect('wood2', x, GROUND + 24, 8, 14);
+    // The bank: scenery in version 1, placed for a later scenario. Stone, barred windows, and
+    // a lantern on a bracket.
+    const bk = PLACES.bank;
+    s += longShadow(bk - 190, bk + 190);
+    s += stoneFront(bk - 190, bk + 190, 470);
+    s += rect('stone2', bk - 120, 496, 240, 62) + rect('signboard', bk - 112, 502, 224, 50) + sign('BANK', bk, 541, 40, 200);
+    s += path('wood2', 'M' + (bk - 44) + ' ' + GROUND + ' L' + (bk - 44) + ' 720 Q' + bk + ' 676 ' + (bk + 44) + ' 720 L' + (bk + 44) + ' ' + GROUND + ' Z');
+    [-150, 70].forEach(function (dx) {
+      s += rect('win', bk + dx, 600, 80, 130);
+      for (let k = 1; k < 4; k += 1) s += rect('stone2', bk + dx + k * 20 - 2, 600, 4, 130);
     });
+    s += rect('stone2', bk - 200, 790, 400, 40);
+    s += shingle(bk + 150, 744, EMBLEMS.lantern);
+    s += rect('wood2', 4560, 760, 60, 70) + path('wood2', 'M4550 760 L4590 730 L4630 760 Z');
+    s += streetLamp(4820);
 
-    // West and east: a pump, a hitching rail and a fence trailing off.
-    s += rect('wood2', 1560, 740, 14, 90) + rect('wood2', 1546, 740, 50, 14) + rect('wood2', 1574, 744, 30, 8);
-    for (let x = 3820; x < 4700; x += 70) s += rect('wood2', x, 760, 10, 70);
-    s += rect('wood2', 3820, 772, 880, 8) + rect('wood2', 3820, 800, 880, 8);
+    // The law office: a narrow two-storey front, shelves of books in the window.
+    const lw = { door: PLACES.law, width: 330, top: 440, signY: 464, signH: 64, signSize: 34, sign: signFor('law', house), upstairs: 1 };
+    s += longShadow(lw.door - 165, lw.door + 165);
+    s += falseFront(lw);
+    s += rect('wood2', lw.door - 156, 712, 92, 92) + rect('win', lw.door - 150, 718, 80, 80);
+    s += '<circle class="lampglow" cx="' + (lw.door - 110) + '" cy="752" r="64" fill="url(#lamp)"/>';
+    for (let k = 0; k < 3; k += 1) {
+      const y = 738 + k * 24;
+      s += rect('wood2', lw.door - 150, y, 80, 3);
+      for (let j = 0; j < 9; j += 1) s += rect(j % 2 ? 'wood2' : 'wood3', lw.door - 148 + j * 8.6, y - 16 + (j % 3) * 2, 6, 16 - (j % 3) * 2);
+    }
+    s += boardwalk(lw.door - 200, lw.door + 200);
+    s += shingle(lw.door + 128, 700, EMBLEMS.scales);
+    s += rect('wood2', 5560, 800, 150, 34) + rect('wood3', 5560, 800, 150, 6);
+    s += streetLamp(5900);
+
+    // The courthouse: the only building with columns and a flag.
+    const ch = PLACES.courthouse;
+    s += longShadow(ch - 330, ch + 330);
+    s += stoneFront(ch - 330, ch + 330, 470);
+    s += path('stone', 'M' + (ch - 350) + ' 452 L' + ch + ' 360 L' + (ch + 350) + ' 452 Z') + rect('stone2', ch - 350, 450, 700, 10);
+    s += rect('stone2', ch - 2, 250, 4, 120);
+    s += '<g transform="translate(' + (ch + 2) + ' 254)"><path class="flag alive wave" d="M0 0 L72 4 L70 44 L0 40 Z"/></g>';
+    s += rect('stone2', ch - 200, 484, 400, 56) + rect('signboard', ch - 192, 490, 384, 44) + sign(signFor('courthouse', house), ch, 524, 34, 350);
+    [-250, -120, 120, 250].forEach(function (dx) {
+      s += rect('stone3', ch + dx - 22, 560, 44, 226) + rect('stone2', ch + dx - 30, 552, 60, 12) + rect('stone2', ch + dx - 30, 782, 60, 10);
+    });
+    s += rect('win', ch - 52, 640, 104, 150) + rect('stone2', ch - 2, 640, 4, 150);
+    [0, 1, 2].forEach(function (k) { s += rect('stone2', ch - 300 + k * 14, 792 + k * 13, 600 - k * 28, 13); });
+    s += rect('wood2', ch + 360, 690, 140, 110) + rect('signboard', ch + 366, 696, 128, 98);
+    for (let k = 0; k < 4; k += 1) s += rect('paperbit', ch + 376 + (k % 2) * 58, 704 + Math.floor(k / 2) * 44, 48, 36);
+    s += rect('wood2', ch + 380, 800, 10, 30) + rect('wood2', ch + 470, 800, 10, 30);
+
+    // The saloon and the stable: scenery. A lantern flickers; the stable's hoist swings.
+    const sl = { door: 7280, width: 360, top: 450, signY: 474, signH: 64, signSize: 40, sign: 'SALOON', upstairs: 2 };
+    s += longShadow(sl.door - 180, sl.door + 180);
+    s += falseFront(sl);
+    s += rect('wood2', sl.door - 200, 650, 400, 6);
+    for (let x = sl.door - 196; x < sl.door + 200; x += 26) s += rect('wood2', x, 626, 5, 28);
+    s += rect('wood3', sl.door - 40, 740, 38, 54) + rect('wood3', sl.door + 2, 740, 38, 54);
+    s += rect('win', sl.door - 160, 724, 90, 70) + rect('win', sl.door + 70, 724, 90, 70);
+    s += '<circle class="lampglow alive flicker" cx="' + sl.door + '" cy="760" r="90" fill="url(#lamp)"/>';
+    s += boardwalk(sl.door - 200, sl.door + 200);
+    const st = 7700;
+    s += longShadow(st - 170, st + 170);
+    s += path('wood', 'M' + (st - 170) + ' ' + GROUND + ' L' + (st - 170) + ' 600 L' + (st - 120) + ' 520 L' + st + ' 480 L' + (st + 120) + ' 520 L' + (st + 170) + ' 600 L' + (st + 170) + ' ' + GROUND + ' Z');
+    s += rect('wood2', st - 70, 660, 140, 170) + path('wood3', 'M' + (st - 66) + ' 664 L' + (st + 66) + ' 826 L' + (st + 60) + ' 826 L' + (st - 66) + ' 672 Z');
+    s += path('wood3', 'M' + (st + 66) + ' 664 L' + (st - 66) + ' 826 L' + (st - 60) + ' 826 L' + (st + 66) + ' 672 Z');
+    s += rect('win', st - 34, 540, 68, 70) + rect('wood2', st - 4, 500, 8, 30);
+    s += '<g transform="translate(' + st + ' 528)"><g class="alive swing">' + rect('wood2', -1, 0, 2, 70) + rect('wood2', -8, 68, 16, 12) + '</g></g>';
+    s += rect('wood2', st - 120, 610, 240, 34) + rect('signboard', st - 114, 614, 228, 26) + sign('LIVERY', st, 636, 22, 200);
+    s += fence(7900, 8480);
+
+    // The yard: the site office, a derrick whose boom turns a little, cable drums, and track
+    // being laid east.
+    const yd = PLACES.yard;
+    s += track(8300, 9300);
+    for (let x = 9310; x < 9560; x += 34) s += rect('wood2', x, 855, 10, 26);
+    s += rect('wood2', 9380, 818, 160, 10) + rect('wood2', 9392, 806, 140, 10);
+    s += longShadow(yd - 130, yd + 130);
+    s += path('wood2', 'M' + (yd - 140) + ' 630 L' + (yd + 150) + ' 600 L' + (yd + 150) + ' 620 L' + (yd - 140) + ' 650 Z');
+    s += rect('wood', yd - 130, 636, 260, 194);
+    for (let y = 660; y < 830; y += 24) s += rect('wood3', yd - 130, y, 260, 3);
+    s += rect('wood2', yd - 116, 664, 232, 46) + rect('signboard', yd - 110, 670, 220, 34) + sign(signFor('yard', house), yd, 696, 26, 200);
+    s += rect('wood2', yd - 40, 724, 80, 106) + rect('win', yd + 64, 730, 50, 46);
+    s += rect('wood2', yd - 150, 826, 300, 10);
+    const dx = 9080;
+    s += path('wood2', 'M' + (dx - 70) + ' 830 L' + (dx - 6) + ' 520 L' + (dx + 6) + ' 520 L' + (dx + 70) + ' 830 L' + (dx + 56) + ' 830 L' + dx + ' 560 L' + (dx - 56) + ' 830 Z');
+    s += rect('wood2', dx - 50, 700, 100, 8);
+    s += '<g transform="translate(' + dx + ' 540)"><g class="alive boom">' + rect('wood2', -10, -6, 190, 12) + rect('wood2', 172, 0, 2, 110) +
+      path('wood2', 'M166 110 L180 110 L180 122 Q173 132 166 122 Z') + '</g></g>';
+    [[8880, 790], [8964, 790], [8922, 718]].forEach(function (d) {
+      s += '<circle class="wood2" cx="' + d[0] + '" cy="' + d[1] + '" r="40"/><circle class="wood3" cx="' + d[0] + '" cy="' + d[1] + '" r="16"/>';
+    });
+    // A storm: dust gusts low over the street, and a tumbleweed rolling past each stop.
+    if (mood === 'storm') {
+      for (let i = 0; i < 16; i += 1) {
+        s += '<ellipse class="gustband alive gust" cx="' + n(300 + i * 620 + vary(i, 60) * 200) + '" cy="' + n(880 + vary(i, 61) * 110) +
+          '" rx="' + n(260 + vary(i, 62) * 200) + '" ry="' + n(10 + vary(i, 63) * 12) + '" style="animation-delay: calc(var(--phase, 0s) - ' + (vary(i, 64) * 5).toFixed(1) + 's)"/>';
+      }
+      Object.keys(PLACES).forEach(function (k, i) {
+        // A scribble of loops, so it reads as dry brush and not as a wheel.
+        let weed = '';
+        for (let j = 0; j < 6; j += 1) {
+          weed += '<ellipse class="weed" rx="' + n(18 + vary(j, 70) * 14) + '" ry="' + n(10 + vary(j, 71) * 14) + '" transform="rotate(' + (j * 31) + ') translate(' + n(vary(j, 72) * 8 - 4) + ' ' + n(vary(j, 73) * 8 - 4) + ')"/>';
+        }
+        s += '<g transform="translate(' + (PLACES[k] - 900) + ' 916)"><g class="alive tumble" style="animation-delay: calc(var(--phase, 0s) - ' + (i * 1.3).toFixed(1) + 's)">' +
+          '<g class="alive roll">' + weed + '</g></g></g>';
+      });
+    }
     const defs = '<radialGradient id="lamp"><stop offset="0" stop-color="#F2B25C" stop-opacity=".75"/><stop offset="1" stop-color="#F2B25C" stop-opacity="0"/></radialGradient>';
     return svg(w, s, defs);
   }
 
-  // Layer 6: the foreground. Near-black, slightly soft, kept clear of the doors at the
-  // two arrival views.
+  // Layer 6: the foreground. Near-black and slightly soft. A piece is placed only where it
+  // stays clear of the middle of the screen at every arrival, so it never hides a door.
   function foreground() {
     const w = 1920 + 1.40 * SPAN;
-    let s = '';
     const barrel = function (x, y, scale) {
       const bw = 70 * scale;
       const bh = 96 * scale;
@@ -305,25 +483,45 @@
       return path('fore', 'M' + x + ' 1080 L' + x + ' 900 Q' + (x + 18) + ' 870 ' + (x + 36) + ' 900 L' + (x + 36) + ' 1080 Z') +
         path('fore', 'M' + (x + 36) + ' 990 L' + (x + 70) + ' 990 L' + (x + 70) + ' 940 Q' + (x + 82) + ' 924 ' + (x + 94) + ' 940 L' + (x + 94) + ' 1010 L' + (x + 36) + ' 1010 Z');
     };
-    s += post(1890) + post(2040) + rect('fore', 1880, 900, 200, 14);
-    s += barrel(3560, 1080, 1.5) + barrel(3680, 1080, 1.3) + crate(3640, 1010, 70);
-    s += cactus(4700);
-    s += crate(3770, 1080, 120) + barrel(3880, 1080, 1.6);
-    s += post(5480) + post(5640) + rect('fore', 5470, 900, 210, 14);
-    s += barrel(2900, 1080, 1.4) + crate(2980, 1080, 90);
+    const pieces = [
+      { width: 200, draw: function (x) { return post(x) + post(x + 150) + rect('fore', x - 10, 900, 200, 14); } },
+      { width: 230, draw: function (x) { return barrel(x, 1080, 1.5) + barrel(x + 120, 1080, 1.3) + crate(x + 80, 1010, 70); } },
+      { width: 100, draw: cactus },
+      { width: 260, draw: function (x) { return crate(x, 1080, 120) + barrel(x + 110, 1080, 1.6); } }
+    ];
+    const doors = Object.keys(PLACES).map(function (k) { return 1.4 * (PLACES[k] - 640); });
+    const clear = function (x, width) {
+      return doors.every(function (offset) { return x + width - offset < 360 || x - offset > 1240; });
+    };
+    let s = '';
+    let i = 0;
+    for (let x = 200; x < w - 300; x += 230 + vary(i, 50) * 260) {
+      const piece = pieces[i % pieces.length];
+      if (clear(x, piece.width) && vary(i, 51) < 0.7) s += piece.draw(n(x));
+      i += 1;
+    }
     s += path('fore', 'M0 1080 L0 1060 Q' + n(w / 2) + ' 1050 ' + w + ' 1062 L' + w + ' 1080 Z');
     const defs = '<filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter>';
     return svg(w, '<g filter="url(#soft)">' + s + '</g>', defs);
   }
 
+  // The words on each location's sign (SPEC 6.2), also shown on arrival.
+  function signFor(id, house) {
+    const SIGNS = { depot: 'DEPOT', law: 'LAW OFFICE', courthouse: 'COURTHOUSE', yard: 'SITE OFFICE' };
+    if (id === 'telegraph') return (house.telegraph || '').toUpperCase();
+    if (id === 'supply') return (house.firm || '').toUpperCase();
+    return SIGNS[id] || '';
+  }
+
   B2B.town = {
     LAYERS: LAYERS,
     PLACES: PLACES,
+    sign: signFor,
     SPAN: SPAN,
     GROUND: GROUND,
     // One SVG string per layer, for a mood.
     draw: function (mood, house) {
-      return { l1: sky(mood), l2: mesas(mood), l3: hills(), l4: backRow(), l5: street(house), l6: foreground() };
+      return { l1: sky(mood), l2: mesas(mood), l3: hills(), l4: backRow(), l5: street(house, mood), l6: foreground() };
     }
   };
 })();
