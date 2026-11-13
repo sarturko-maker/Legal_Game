@@ -58,9 +58,9 @@
     return { stop: function () { B2B.props.leave(prop); } };
   }
 
-  // Set up: every scenario with its title, blurb, tags, minutes and a tick box, then the
-  // options. Start plays the ticked scenarios in the order listed.
-  function setup(parent, scenarios, options, onStart) {
+  // Set up: every scenario with its title, blurb, tags, minutes and a tick box, the packs
+  // loaded, then the options. Start plays the ticked scenarios in the order listed.
+  function setup(parent, scenarios, packs, options, onStart) {
     const prop = sheet(parent, 'setup', 'setup');
     el('h2', '', prop, 'Set up');
     const list = el('div', 'deals', prop);
@@ -75,6 +75,7 @@
       el('span', 'meta', words, (sc.tags || []).join(' \u00b7 ') + (sc.minutes ? ' \u00b7 ' + sc.minutes + ' minutes' : ''));
       return { id: sc.id, box: box };
     });
+    el('p', 'packs', prop, 'Packs: ' + packs.map(function (p) { return p.title || p.id; }).join(', '));
     const opts = el('div', 'options', prop);
     const choose = function (name, legend, values, current) {
       const set = el('fieldset', '', opts);
@@ -91,6 +92,17 @@
     };
     const size = choose('size', 'Text size', [[false, 'Normal'], [true, 'Large']], options.large);
     const walk = choose('walking', 'Walking', [[true, 'On'], [false, 'Off']], options.walking);
+    const wild = choose('wildcards', 'Wildcards', [[false, 'Off'], [true, 'On']], options.wildcards);
+    // The seed: digits, or empty for none.
+    const seedSet = el('fieldset', 'seed', opts);
+    const seedLabel = el('label', '', seedSet);
+    el('span', 'legend', seedLabel, 'Seed');
+    const seed = el('input', '', seedLabel);
+    seed.type = 'text';
+    seed.inputMode = 'numeric';
+    seed.maxLength = 9;
+    seed.value = options.seed == null ? '' : String(options.seed);
+    seed.addEventListener('input', function () { seed.value = seed.value.replace(/\D/g, ''); });
     const start = button(prop, 'big start', 'Start', function () {
       const ticked = boxes.filter(function (b) { return b.box.checked; }).map(function (b) { return b.id; });
       if (!ticked.length) {
@@ -98,7 +110,7 @@
         return;
       }
       const picked = function (group) { return group.filter(function (g) { return g.input.checked; })[0].value; };
-      onStart({ ticked: ticked, large: picked(size), walking: picked(walk) });
+      onStart({ ticked: ticked, large: picked(size), walking: picked(walk), wildcards: picked(wild), seed: seed.value ? Number(seed.value) : null });
     });
     setTimeout(function () { boxes[0].box.focus({ preventScroll: true }); }, 0);
     return { stop: function () { B2B.props.leave(prop); } };

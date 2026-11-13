@@ -3,8 +3,9 @@
  * The machine check: docs/SPEC.md section 12.1. Exits non-zero on any failure.
  * The Stop hook runs it at the end of every turn, so it has to stay fast.
  *
- * Run: node tools/check.js
- * TODO (M6): --pack <file> checks one extra pack.
+ * Run: node tools/check.js [--pack <file>]
+ * --pack also loads one extra pack after the public one, as the game would, and checks it
+ * (PACK-FORMAT 7): node tools/check.js --pack packs/private.js
  */
 'use strict';
 const fs = require('fs');
@@ -188,6 +189,27 @@ function main() {
   const tests = runTests();
   const total = tests.passed + tests.problems.length;
   report('tests', count(total, 'test') + ', ' + tests.passed + ' passed, ' + tests.problems.length + ' failed', tests.problems);
+
+  // Loaded last, so the fixtures and tests above see the public pack alone.
+  const at = process.argv.indexOf('--pack');
+  if (at >= 0 && B2B) {
+    const file = path.resolve(process.argv[at + 1] || '');
+    const rel = path.relative(ROOT, file);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      report('pack', rel, ['no such file: ' + rel]);
+    } else {
+      const before = B2B.packs.problems().length;
+      const problems = scanFile(rel);
+      try {
+        require(file);
+        problems.push(...B2B.packs.problems().slice(before));
+      } catch (err) {
+        problems.push(rel + ' did not load: ' + err.message);
+      }
+      const now = B2B.packs.scenarios().map((sc) => sc.id);
+      report('pack', rel + ': the game would offer ' + now.join(', ') + '; ' + count(B2B.packs.wildcards().length, 'wildcard') + '; ' + (problems.length ? count(problems.length, 'problem') : 'no problems'), problems);
+    }
+  }
 
   console.log(failures.length ? 'FAIL: ' + count(failures.length, 'problem') : 'PASS');
   process.exitCode = failures.length ? 1 : 0;

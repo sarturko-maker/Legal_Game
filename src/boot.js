@@ -23,15 +23,17 @@
   // The session (SPEC 5.3): the chosen scenarios, the options, the results so far. Only the
   // set-up options are remembered between visits (D8).
   const session = {
+    chosen: [],
     scenarios: [],
-    options: { ticked: [], large: false, walking: true },
+    seed: null,
+    options: { ticked: [], large: false, walking: true, wildcards: false, seed: null },
     index: 0,
     deals: [],
     record: function () {
       const deals = session.deals.map(function (d) { return { id: d.id, path: d.path.slice(), result: d.result, net: d.net }; });
       return {
-        packs: B2B.packs.loaded(),
-        seed: null,
+        packs: B2B.packs.loaded().map(function (p) { return { id: p.id, version: p.version }; }),
+        seed: session.seed,
         deals: deals,
         total: deals.reduce(function (sum, d) { return sum + d.net; }, 0)
       };
@@ -101,7 +103,7 @@
     note('title');
     // Play: every scenario, with the default options (SPEC 4).
     screen = B2B.screens.title(stage.props, function () {
-      startSession(all, { ticked: all.map(function (sc) { return sc.id; }), large: false, walking: true });
+      startSession(all, { ticked: all.map(function (sc) { return sc.id; }), large: false, walking: true, wildcards: false, seed: null });
     }, setup);
   }
 
@@ -109,15 +111,19 @@
     backdrop('supply', 'dusk');
     mode = 'setup';
     note('set up');
-    screen = B2B.screens.setup(stage.props, all, session.options, function (options) {
+    screen = B2B.screens.setup(stage.props, all, B2B.packs.loaded(), session.options, function (options) {
       session.options = options;
       save();
       startSession(all.filter(function (sc) { return options.ticked.indexOf(sc.id) >= 0; }), options);
     });
   }
 
+  // With no seed and wildcards off, the deals are the scripts exactly (SPEC 9). Wildcards on
+  // with no seed draws a seed, so every session differs; the record keeps it.
   function startSession(scenarios, options) {
-    session.scenarios = scenarios;
+    session.chosen = scenarios;
+    session.seed = options.seed != null ? options.seed : options.wildcards ? Math.floor(Math.random() * 100000) : null;
+    session.scenarios = session.seed == null ? scenarios : B2B.packs.vary(scenarios, session.seed, options.wildcards);
     session.options = options;
     session.index = 0;
     session.deals = [];
@@ -171,7 +177,7 @@
     const record = session.record();
     note('year end\nrecord ' + JSON.stringify(record));
     screen = B2B.screens.yearEnd(stage.props, session.deals, record.total, house, function () {
-      startSession(session.scenarios, session.options);
+      startSession(session.chosen, session.options);
     }, setup);
   }
 
@@ -248,16 +254,17 @@
     const find = function (id) { return all.find(function (s) { return s.id === id; }); };
     B2B.debug.overlay = function (on) { overlay.hidden = !on; };
     B2B.debug.player = player;
-    // Replays a path instantly and shows where it ends (SPEC 12.3). until stops at a node.
-    B2B.debug.jump = function (scenarioId, path, until) {
+    // Replays a path instantly and shows where it ends (SPEC 12.3). until stops at a node;
+    // options (a seed, wildcards) dress the deal as a session would.
+    B2B.debug.jump = function (scenarioId, path, until, options) {
       menu.toggle(false);
-      startSession([find(scenarioId)], session.options);
+      startSession([find(scenarioId)], Object.assign({}, session.options, options || {}));
       screen.stop();
       screen = null;
       mode = 'deal';
       hud.title.textContent = find(scenarioId).title;
       hud.title.hidden = false;
-      director.jump(find(scenarioId), path || [], until);
+      director.jump(session.scenarios[0], path || [], until);
       return director.state().nodeId;
     };
     // Starts a session of the given scenarios at the first intro card.

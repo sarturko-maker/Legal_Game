@@ -4,7 +4,7 @@
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const SCRIPTS = ['src/core/namespace.js', 'src/core/packs.js', 'src/core/engine.js', 'packs/public.js'];
+const SCRIPTS = ['src/core/namespace.js', 'src/core/rng.js', 'src/core/packs.js', 'src/core/engine.js', 'packs/public.js'];
 
 module.exports = function load() {
   if (!globalThis.B2B || !globalThis.B2B.engine) {

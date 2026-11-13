@@ -142,7 +142,9 @@
         return { id: o.id, label: c.fill(o.label), note: c.line(o.note), text: c.line(o.text) };
       }),
       count: node.count || null,
-      result: node.result || null
+      result: node.result || null,
+      // A wildcard's front page, shown before this node (SPEC 9).
+      news: node.news ? { headline: c.line(node.news.headline), text: c.paragraphs(node.news.text) } : null
     };
   }
 

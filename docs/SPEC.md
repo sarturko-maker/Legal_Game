@@ -136,8 +136,9 @@ B2B.engine.replay(scenario, house, path)    -> state      plays a recorded path 
   option ids for a pick. This is the same shape as the fixtures and the result record.
 - `view` is everything the screen needs for the current node, with every placeholder
   resolved and every function already called: `{ kind, at, show, text, lead, foot, from,
-  to, who, title, headline, stamp, face, mood, week, prompt, hint, options, count, result }`.
-  `text` is always an array of paragraphs.
+  to, who, title, headline, stamp, face, mood, week, prompt, hint, options, count, result,
+  news }`. `text` is always an array of paragraphs. `news` is a wildcard's front page,
+  `{ headline, text }`, or null (section 9).
 - A wrong move (unknown option, wrong number of picks, advancing at a choice) throws an
   `Error` that names the scenario, the node and the problem.
 - `replay` auto-advances beats and consumes one path step at each choice or pick.

@@ -256,13 +256,25 @@ Rules:
 - `packs/private.example.js` is the template. It is in git and contains only invented
   content.
 
-## 8. Reserved for milestone M6
+## 8. Variation: skins and wildcards (milestone M6)
 
-Do not build these before M6. The names are reserved so that nothing else uses them.
+Used only when the set-up screen has a seed, or wildcards on (SPEC 9). Otherwise the game
+plays the script exactly.
 
-- `skins` on a scenario: alternative sets of names and a scale factor for the numbers.
-- `wild` on a node: the name of a wildcard slot. `wildcards` on a pack: the cards.
-- `seed` in the session options.
+- `skins` on a scenario: other deals for replays.
+  `skins: { amounts: ['orderValue', 'margin'], sets: [{ scale: 2, names: { buyer: 'Quill' } }] }`.
+  A set's `names` replace keys of `skin`; its `scale` multiplies every `k` key listed in
+  `amounts`, together. The scenario's functions see the factor as `k.scale`, so `k` may
+  not have its own `scale`. Names tied to a cast member stay out of the sets.
+- `wild` on a node: the name of a wildcard slot.
+- `wildcards` on a pack: the cards.
+  `{ id, scenario, slot, headline, text, k: { penalty: 450 } }` changes one number in `k`;
+  `{ id, scenario, slot, headline, text, next: 'nodeId' }` changes the `next` of the beat
+  that names the slot. The headline and text are shown as a newspaper front page before
+  that node.
+- `seed` in the session options. The same seed gives the same session.
+
+The checker plays every path of every skin set and every wildcard.
 
 ## 9. Writing rules for new content
 

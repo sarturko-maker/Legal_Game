@@ -48,7 +48,7 @@
       const view = B2B.engine.view(state);
       hooks.onView(state, view);
       const t = token;
-      const steps = [travel, scene, event, lead, runIn, present];
+      const steps = [travel, scene, news, event, lead, runIn, present];
       let i = 0;
       const next = function () {
         if (t !== token) return;
@@ -91,6 +91,18 @@
       fresh = false;
       hooks.week(view.week);
       next();
+    }
+
+    // A wildcard's front page comes first, before the node it changes (SPEC 9).
+    function news(view, next) {
+      if (!view.news) return next();
+      stage.scrim.classList.add('on');
+      const paper = { kind: 'beat', show: 'paper', headline: view.news.headline, text: view.news.text };
+      current = B2B.props.show(stage.props, paper, { house: house, cast: cast }, function () {
+        clearProps();
+        next();
+      });
+      shown.push(current);
     }
 
     // The train leaves or arrives while the beat's prop is up. Input finishes it first.

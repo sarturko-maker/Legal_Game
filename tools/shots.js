@@ -72,7 +72,17 @@ const SHOTS = [
   { name: 'm5-debrief-bit', run: J2(['sign', 'quote12', 'verbal']), instant: true, keys: [' ', ' ', ' ', ' '], wait: 700, both: true },
   { name: 'm5-yearend', drive: [['clone'], ['sign', 'quote12', 'verbal']], wait: 900, both: true },
   { name: 'm5-menu', run: "B2B.debug.session(['s1', 's2'])", keys: ['Escape'], wait: 600, both: true },
-  { name: 'm5-lost-s2', run: J2(['refuse', 'walk']), wait: 900 }
+  { name: 'm5-lost-s2', run: J2(['refuse', 'walk']), wait: 900 },
+  { name: 'm6-setup', run: "B2B.debug.screen('setup')", wait: 900, both: true },
+  { name: 'm6-skin-telegram', run: "B2B.debug.jump('s1', [], 'po', { seed: 1 })", wait: 3500 },
+  { name: 'm6-skin-paper', run: "B2B.debug.jump('s1', ['clone'], 'later', { seed: 1 })", wait: 900 },
+  { name: 'm6-skin-ledger', run: "B2B.debug.jump('s2', ['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law'], null, { seed: 1 })", instant: true, keys: [' '], wait: 1500 },
+  { name: 'm6-yearend-seed', drive: [['clone'], ['sign', 'quote12', 'verbal']], options: { seed: 5 }, wait: 900, both: true },
+  { name: 'm6p-setup', private: true, run: "B2B.debug.screen('setup')", wait: 900, both: true },
+  { name: 'm6p-intro', private: true, run: "B2B.debug.session(['s1', 'p1'])", wait: 900 },
+  { name: 'm6p-frontpage', private: true, run: "B2B.debug.session(['p1'], { seed: 5, wildcards: true })", keys: [' '], wait: 1800, both: true },
+  { name: 'm6p-ledger', private: true, run: "B2B.debug.jump('p1', ['date'], null, { seed: 5, wildcards: true })", instant: true, keys: [' '], wait: 1500 },
+  { name: 'm6p-debrief', private: true, run: "B2B.debug.jump('s1', ['ship'])", instant: true, keys: [' ', ' ', ' '], wait: 900 }
 ];
 
 const KEYS = {
@@ -140,6 +150,14 @@ async function main() {
   const keys = args.includes('--keys');
   const paths = args.includes('--paths');
   const only = args.filter((a) => !a.startsWith('--'));
+  // --private: the example private pack, copied to packs/private.js for this run only
+  // (PLAN M6). An existing packs/private.js is somebody's real pack: never touch it.
+  const privateRun = args.includes('--private');
+  const PRIVATE = path.join(ROOT, 'packs', 'private.js');
+  if (privateRun) {
+    if (fs.existsSync(PRIVATE)) throw new Error('packs/private.js already exists; --private will not overwrite it.');
+    fs.copyFileSync(path.join(ROOT, 'packs', 'private.example.js'), PRIVATE);
+  }
   const browser = findBrowser();
   if (!browser) throw new Error('No Chrome, Chromium or Edge found. Tried: ' + BROWSERS.join(', '));
   fs.mkdirSync(OUT, { recursive: true });
@@ -253,18 +271,28 @@ async function main() {
       return { d, run, want, fail };
     };
 
+    if (privateRun) {
+      // The game loads the private pack after the public one, and the replacement starts.
+      await fresh();
+      const p = await evaluate("(() => { B2B.debug.session(['s1']); return { packs: B2B.packs.loaded().map((x) => x.id), offered: B2B.packs.scenarios().map((x) => x.id), intro: document.querySelector('.intro h1').textContent, problems: B2B.packs.problems().length }; })()");
+      const ok = p.packs.join() === 'public,example' && p.offered.join() === 's1,p1' && p.intro === 'The usual price' && p.problems === 0;
+      if (!ok) errors.push('private pack: ' + JSON.stringify(p));
+      console.log('private ' + (ok ? 'ok  ' : 'FAIL') + ' packs ' + p.packs.join(', ') + '; offered ' + p.offered.join(', ') + '; s1 starts as "' + p.intro + '"');
+    }
+
     for (const [width, height] of SIZES) {
       if ((paths || keys) && !only.length) break;
       await page('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       for (const shot of SHOTS) {
         if (only.length && !only.includes(shot.name)) continue;
+        if (Boolean(shot.private) !== privateRun) continue;
         // Shots marked both are taken again with large text.
         for (const large of shot.both ? [false, true] : [false]) {
           await fresh();
           if (large) await evaluate("B2B.session.options.large = true; B2B.stage.el.classList.add('large')");
           if (shot.instant || shot.drive) await evaluate('B2B.debug.instant = true');
           if (shot.drive) {
-            await evaluate("B2B.debug.session(['s1', 's2'])");
+            await evaluate("B2B.debug.session(['s1', 's2'], " + JSON.stringify(shot.options || {}) + ')');
             await drive(shot.drive, 50);
           } else {
             await evaluate(shot.run);
@@ -314,6 +342,19 @@ async function main() {
       const ok = session.total === total;
       if (!ok) errors.push('session total ' + session.total + ', expected ' + total);
       console.log('session ' + (ok ? 'ok  ' : 'FAIL') + ' Play, s1 clone, s2 sign quote12 verbal: year end ' + session.total + ' (expected ' + total + '), ' + session.keysUsed + ' keys');
+
+      // The same seed, twice, through the screen: the same deals and the same record (SPEC 9).
+      const seeded = [];
+      for (let n = 0; n < 2; n += 1) {
+        await fresh();
+        await evaluate('B2B.debug.instant = true');
+        await evaluate("B2B.debug.session(['s1', 's2'], { seed: 4471, wildcards: true })");
+        const r = await drive([['pack', 'law', 'law'], ['sign', 'ask', 'quote14', 'risk']], 50);
+        seeded.push({ total: r.total, record: await evaluate('JSON.stringify(B2B.debug.record())') });
+      }
+      const same = seeded[0].record === seeded[1].record && JSON.parse(seeded[0].record).seed === 4471;
+      if (!same) errors.push('seed 4471 twice: ' + JSON.stringify(seeded));
+      console.log('seed    ' + (same ? 'ok  ' : 'FAIL') + ' seed 4471 with wildcards on, played twice: the same record both times, year end ' + seeded[0].total);
     }
 
     if (keys) {
@@ -381,7 +422,22 @@ async function main() {
       const f = await evaluate('B2B.debug.walkFrameTime()');
       console.log('walk    ' + f.frames + ' frames, average ' + f.averageMs + ' ms, worst ' + f.worstMs + ' ms (headless, 1920x1080)');
     }
+
+    if (privateRun && (!only.length || only.includes('m6p-broken'))) {
+      // A private pack that fails validation: the game shows the problems and does not start.
+      const text = fs.readFileSync(PRIVATE, 'utf8');
+      fs.writeFileSync(PRIVATE, text.replace("next: 'ask'", "next: 'nowhere'"));
+      await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+      await page('Page.navigate', { url });
+      await pause(1200);
+      const shown = await evaluate("document.body.textContent.includes('The packs have problems') && document.body.textContent.includes('nowhere')");
+      if (!shown) errors.push('broken private pack: no problem screen');
+      const { data } = await page('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(OUT, 'm6p-broken-1280x720.png'), Buffer.from(data, 'base64'));
+      console.log('broken  ' + (shown ? 'ok  ' : 'FAIL') + ' a private pack that fails validation shows the problem screen');
+    }
   } finally {
+    if (privateRun) fs.rmSync(PRIVATE, { force: true });
     cdp.child.kill();
     // Chrome may still be writing to its profile for a moment after it closes.
     await pause(500);
