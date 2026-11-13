@@ -22,9 +22,11 @@
 
   const quick = function () { return (B2B.debug && B2B.debug.instant) || B2B.stage.reduce; };
 
-  // Brings a prop up from the bottom of the screen in about 300 ms.
+  // Brings a prop up from the bottom of the screen in about 300 ms. With reduced motion it
+  // fades in where it stands (SPEC 13).
+  const travel = function () { return B2B.stage.reduce ? 0 : 260; };
   function rise(prop, turn) {
-    prop.style.transform = 'translateY(260px) rotate(' + turn + 'deg)';
+    prop.style.transform = 'translateY(' + travel() + 'px) rotate(' + turn + 'deg)';
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         prop.classList.add('in');
@@ -35,7 +37,7 @@
 
   function leave(prop) {
     prop.classList.remove('in');
-    prop.style.transform = 'translateY(260px)';
+    prop.style.transform = 'translateY(' + travel() + 'px)';
     setTimeout(function () { prop.remove(); }, quick() ? 0 : 320);
   }
 
@@ -73,6 +75,7 @@
 
     let shown = 0;
     let done = false;
+    let left = false;
     const complete = function () {
       if (done) return;
       done = true;
@@ -84,8 +87,12 @@
       el: prop,
       // Any input: finish the typing, or continue when it is finished.
       press: function () {
-        if (!done) complete();
-        else onContinue();
+        if (!done) {
+          complete();
+        } else if (!left) {
+          left = true;
+          onContinue();
+        }
       },
       finish: complete,
       leave: function () { leave(prop); }

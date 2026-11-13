@@ -52,7 +52,7 @@
     const w = 1920 + 0.02 * SPAN;
     let body = '';
     if (mood === 'dusk') {
-      body += '<circle class="sun" cx="1480" cy="618" r="74"/>';
+      body += '<circle class="sun" cx="236" cy="640" r="74"/>';
     } else {
       body += '<circle class="sun" cx="1520" cy="175" r="44"/>';
     }
@@ -69,7 +69,7 @@
   }
 
   // Layer 2: a flat, pale range of mesas. One tone, with a slightly darker far shelf.
-  function mesas() {
+  function mesas(mood) {
     const w = 1920 + 0.08 * SPAN;
     let far = 'M0 700 ';
     let near = 'M0 720 ';
@@ -90,7 +90,15 @@
     }
     far += 'L' + w + ' 700 L' + w + ' 760 L0 760 Z';
     near += 'L' + w + ' 720 L' + w + ' 760 L0 760 Z';
-    return svg(w, path('mesa2', far) + path('mesa', near));
+    let shimmer = '';
+    if (mood === 'day') {
+      // Heat shimmer low on the horizon (ART 4, day).
+      for (let i = 0; i < 9; i += 1) {
+        shimmer += '<ellipse class="cloud alive shimmer" cx="' + n(140 + i * 270 + vary(i, 13) * 90) + '" cy="' + n(728 + vary(i, 14) * 18) +
+          '" rx="' + n(90 + vary(i, 15) * 80) + '" ry="1.6" style="animation-delay: calc(var(--phase, 0s) - ' + (i * 0.7).toFixed(1) + 's)"/>';
+      }
+    }
+    return svg(w, path('mesa2', far) + path('mesa', near) + shimmer);
   }
 
   // Layer 3: rolling hills, a windmill, the railway line and telegraph poles running east.
@@ -315,7 +323,7 @@
     GROUND: GROUND,
     // One SVG string per layer, for a mood.
     draw: function (mood, house) {
-      return { l1: sky(mood), l2: mesas(), l3: hills(), l4: backRow(), l5: street(house), l6: foreground() };
+      return { l1: sky(mood), l2: mesas(mood), l3: hills(), l4: backRow(), l5: street(house), l6: foreground() };
     }
   };
 })();

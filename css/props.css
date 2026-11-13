@@ -51,7 +51,7 @@
   background: repeating-linear-gradient(transparent 0 55px, var(--paper-edge) 55px 57px, transparent 57px 58px);
   word-spacing: 4px;
 }
-.telegram .message .stop { opacity: .55; }
+.telegram .message .stop { color: #6B5A4C; }
 .telegram .message .later { visibility: hidden; }
 .stamp {
   position: absolute;
@@ -69,7 +69,7 @@
 .stamp.landed { animation: land .26s cubic-bezier(.3, 1.4, .6, 1) forwards; }
 @keyframes land {
   from { opacity: 0; transform: scale(1.35) rotate(var(--turn, -8deg)); }
-  to { opacity: .86; transform: scale(1) rotate(var(--turn, -8deg)); }
+  to { opacity: 1; transform: scale(1) rotate(var(--turn, -8deg)); }
 }
 
 .continue {
@@ -136,8 +136,8 @@
   border-radius: 50%;
   font: 32px/1 var(--display);
 }
-.ticket .label { display: block; font: 36px/1.2 var(--text); }
-.ticket .note { display: block; margin-top: 4px; font: italic 26px/1.25 var(--text); color: #4A3B30; }
+.ticket .label { display: block; font: 34px/1.2 var(--text); }
+.ticket .note { display: block; margin-top: 4px; font: italic 24px/1.25 var(--text); color: #4A3B30; }
 /* A punched ticket: a visible hole and a tick, never colour alone. */
 .ticket.punched::after {
   content: '';

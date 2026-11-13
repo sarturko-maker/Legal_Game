@@ -4,7 +4,9 @@
 (function () {
   const B2B = globalThis.B2B;
   const debugOn = /[?&]debug=1\b/.test(location.search);
-  B2B.debug = { instant: false };
+  // The debug hooks exist only with ?debug=1 (SPEC 12.3).
+  if (debugOn) B2B.debug = { instant: false };
+  const instant = function () { return Boolean(B2B.debug && B2B.debug.instant); };
 
   let stage;
   let player;
@@ -13,7 +15,7 @@
   let overlay;
   let timers = [];
 
-  const later = function (fn, ms) { timers.push(setTimeout(fn, B2B.debug.instant ? 0 : ms)); };
+  const later = function (fn, ms) { timers.push(setTimeout(fn, instant() ? 0 : ms)); };
   const clear = function () {
     timers.forEach(clearTimeout);
     timers = [];
@@ -22,9 +24,13 @@
   function views() {
     const s1 = B2B.packs.scenarios().find(function (sc) { return sc.id === 's1'; });
     let state = B2B.engine.start(s1, B2B.packs.house());
-    const po = B2B.engine.view(state);
+    const po = { view: B2B.engine.view(state), state: state };
     while (state.nodeId !== 'c1') state = B2B.engine.advance(state);
-    return { title: s1.title, po: po, c1: B2B.engine.view(state) };
+    return { title: s1.title, po: po, c1: { view: B2B.engine.view(state), state: state } };
+  }
+
+  function show(step, state) {
+    note(step + '\nscenario ' + state.scenarioId + ', node ' + state.nodeId + '\nvars ' + JSON.stringify(state.vars));
   }
 
   function showPlace(name) {
@@ -58,13 +64,13 @@
     },
     telegram: function () {
       const v = views();
-      current = B2B.props.telegram(stage.props, v.po, B2B.packs.house(), function () {
+      current = B2B.props.telegram(stage.props, v.po.view, B2B.packs.house(), function () {
         clearProp();
         steps.walk();
       });
       place.classList.remove('on');
       stage.scrim.classList.add('on');
-      note('demo: telegram (s1 po)');
+      show('demo: telegram', v.po.state);
     },
     walk: function () {
       note('demo: walking to supply');
@@ -80,12 +86,12 @@
       const v = views();
       place.classList.remove('on');
       stage.scrim.classList.add('on');
-      current = B2B.props.choice(stage.props, v.c1, function (id) {
+      current = B2B.props.choice(stage.props, v.c1.view, function (id) {
         note('demo: chose ' + id + '. Starting again.');
         clearProp();
         later(start, 1600);
       });
-      note('demo: choice (s1 c1)');
+      show('demo: choice', v.c1.state);
     }
   };
 
@@ -94,18 +100,20 @@
     later(steps.telegram, 1600);
   }
 
-  // Continue: Space, Enter, Right arrow, or a click (SPEC 6.4). 1 to 4 choose.
+  // Continue: Space, Enter, Right arrow, or a click (SPEC 6.4). 1 to 4 choose. Props take
+  // their own clicks; a click on the stage only skips a walk.
   function onInput(e) {
     if (!current) return;
     if (current.trip) {
       current.trip.finish();
       return;
     }
+    if (e.type === 'pointerdown') return;
     if (e.type === 'keydown' && /^[1-4]$/.test(e.key) && current.key) {
       current.key(Number(e.key) - 1);
       return;
     }
-    const go = e.type === 'pointerdown' || e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight';
+    const go = e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight';
     if (go && current.press) {
       e.preventDefault();
       current.press();

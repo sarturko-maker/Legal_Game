@@ -143,6 +143,28 @@ async function main() {
         await press('2', 'Digit2', '2');
         const punched = await evaluate("document.querySelectorAll('.ticket.punched').length");
         console.log('keys    2 chooses the second ticket: punched ' + punched);
+
+        // The same with the mouse. One click must do one thing.
+        const click = async (selector) => {
+          const box = await evaluate("(() => { const r = document.querySelector('" + selector + "').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()");
+          for (const type of ['mousePressed', 'mouseReleased']) {
+            await page('Input.dispatchMouseEvent', { type, x: box[0], y: box[1], button: 'left', clickCount: 1 });
+          }
+        };
+        await page('Page.navigate', { url });
+        await pause(2400);
+        await click('.telegram .message');
+        const afterOne = await evaluate("[document.querySelectorAll('.telegram .later').length, !!document.querySelector('.telegram.in'), !!document.querySelector('.figure.walking')]");
+        console.log('mouse   one click while typing: letters left ' + afterOne[0] + ', telegram still up ' + afterOne[1] + ', walking ' + afterOne[2]);
+        await click('.telegram .continue');
+        await pause(150);
+        const walkingNow = await evaluate("!!document.querySelector('.figure.walking')");
+        await click('#stage');
+        await pause(3600);
+        const panels = await evaluate("document.querySelectorAll('.panel').length");
+        await click('.ticket');
+        const punchedNow = await evaluate("document.querySelectorAll('.ticket.punched').length");
+        console.log('mouse   Continue walks: ' + walkingNow + '; a click skips; panels shown ' + panels + '; a click punches ' + punchedNow);
       }
       if (frames && width === 1920) {
         const result = await evaluate('B2B.debug.walkFrameTime()');

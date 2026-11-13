@@ -77,9 +77,9 @@ body > h1 {
 /* Silhouette tones by mood. Far is pale, near is dark. */
 .mood-day {
   --sun: #FFF6DC; --cloud: #FFFFFF; --cloud-o: .55;
-  --mesa: #BCB2A6; --mesa2: #B0A598;
-  --hill: #A69479; --hill2: #8C7A61;
-  --back: #7C6857; --back2: #66523F;
+  --mesa: #C4BDB4; --mesa2: #B6AEA6;
+  --hill: #AC9F88; --hill2: #8F8270;
+  --back: #8A7D72; --back2: #726558;
   --wood: #5B4434; --wood2: #3E2D23; --wood3: #6A5040;
   --win: #2A201B; --lamp: 0; --rim: 0;
   --walk: #47352A; --ground: #C9A27A; --ground2: #B88F68;
@@ -127,7 +127,7 @@ body > h1 {
 
 /* Things that are always gently alive (ART 7). Each world sets --phase so that two
    copies cross-fading during a mood change move in step. */
-.alive { animation-delay: var(--phase, 0s); transform-box: fill-box; }
+.alive { transform-box: fill-box; }
 .blades { animation: turn 9s linear infinite; transform-origin: center; }
 .smoke { animation: rise 7.5s ease-out infinite; transform-origin: center; opacity: 0; }
 .smoke.s2 { animation-delay: calc(var(--phase, 0s) + 1.5s); }
@@ -138,6 +138,9 @@ body > h1 {
 .hop { animation: hop 7s ease-in-out infinite; }
 .drift { animation: drift 160s linear infinite alternate; }
 .flicker { animation: flicker 3.3s ease-in-out infinite alternate; }
+.shimmer { animation: shimmer 3.8s ease-in-out infinite alternate; transform-origin: center; }
+/* After the shorthands above, which would otherwise reset it. */
+.alive { animation-delay: var(--phase, 0s); }
 
 @keyframes turn { to { transform: rotate(360deg); } }
 @keyframes rise {
@@ -152,6 +155,10 @@ body > h1 {
   94% { transform: translate(10px, 0); }
 }
 @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-180px); } }
+@keyframes shimmer {
+  from { transform: translateX(-14px) scaleY(1); opacity: .25; }
+  to { transform: translateX(14px) scaleY(1.8); opacity: .5; }
+}
 @keyframes flicker { from { opacity: calc(var(--lamp) * .8); } to { opacity: var(--lamp); } }
 
 /* Atmosphere (layer 7): fixed. */
@@ -195,7 +202,6 @@ body > h1 {
   background: var(--paper);
   color: var(--ink);
   padding: 8px 22px 6px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, .25);
 }
 .hud .title { left: 40px; top: 32px; font: 30px/1.2 var(--text); transform: rotate(-.6deg); }
 .hud .week { right: 40px; top: 32px; font: 30px/1.2 var(--display); transform: rotate(.5deg); }
@@ -225,6 +231,8 @@ body > h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alive, .figure .body { animation: none; }
+  .alive, .figure .body, .stamp.landed { animation: none; }
+  .stamp.landed { opacity: 1; }
+  .prop { transition: opacity .2s; }
   .sky > div, .world, .scrim, .hud .place { transition: none; }
 }

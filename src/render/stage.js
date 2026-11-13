@@ -76,7 +76,7 @@
       backs = backs.filter(function (b) { return gone.indexOf(b) < 0; });
       fronts = fronts.filter(function (f) { return gone.indexOf(f) < 0; });
     };
-    if (instant || reduce || B2B.debug.instant || !gone.length) {
+    if (instant || reduce || (B2B.debug && B2B.debug.instant) || !gone.length) {
       finish();
       return;
     }
