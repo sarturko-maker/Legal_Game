@@ -1,27 +1,230 @@
-/* Tokens from docs/ART.md section 4: only the ones in use so far. */
+/* Tokens (ART 4), the stage (SPEC 6.1) and its layers (ART 3). */
 :root {
   --paper: #F1E4C9;
+  --paper-edge: #D9C7A3;
   --ink: #2B211C;
+  --red: #A63A2B;
+  --ochre: #E0A63F;
+  --sage: #7A8B6A;
+  --dust: #C9A27A;
+  --display: 'Rye', Georgia, serif;
+  --type: 'Special Elite', 'Courier New', monospace;
+  --text: 'IM Fell English', Georgia, 'Times New Roman', serif;
 }
 
-html,
-body {
+html, body {
   height: 100%;
   margin: 0;
 }
 
 body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
   background: var(--paper);
   color: var(--ink);
-  /* A system serif until the embedded faces arrive in M3. */
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--text);
 }
 
-h1 {
+/* The title page of M0, kept for pages without a stage. */
+body > h1 {
   margin: 0;
   font-size: 8vw;
   font-weight: normal;
+}
+
+/* The logical stage is 1920x1080, scaled to fit and centred by stage.js. */
+#stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: 0 0;
+  background: #000;
+}
+
+.sky, .world, .actors, .atmos, .scrim, .hud, .props, .cover {
+  position: absolute;
+  inset: 0;
+}
+
+.sky > div {
+  position: absolute;
+  inset: 0;
+  transition: opacity 2.5s ease-in-out;
+}
+
+.world {
+  transition: opacity 2.5s ease-in-out;
+}
+
+.layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1080px;
+  will-change: transform;
+}
+
+.layer svg {
+  display: block;
+}
+
+/* Skies, top to horizon (ART 4). */
+.sky-day { background: linear-gradient(#7FB3C8 0%, #CFE3DC 48%, #F3E3BF 66%); }
+.sky-dusk { background: linear-gradient(#3B2F5B 0%, #C7624A 46%, #F2B25C 66%); }
+
+/* Silhouette tones by mood. Far is pale, near is dark. */
+.mood-day {
+  --sun: #FFF6DC; --cloud: #FFFFFF; --cloud-o: .55;
+  --mesa: #BCB2A6; --mesa2: #B0A598;
+  --hill: #A69479; --hill2: #8C7A61;
+  --back: #7C6857; --back2: #66523F;
+  --wood: #5B4434; --wood2: #3E2D23; --wood3: #6A5040;
+  --win: #2A201B; --lamp: 0; --rim: 0;
+  --walk: #47352A; --ground: #C9A27A; --ground2: #B88F68;
+  --signboard: #E9D9B4; --signink: #2B211C;
+  --fore: #1F1712;
+}
+.mood-dusk {
+  --sun: #F7C46A; --cloud: #E7987C; --cloud-o: .7;
+  --mesa: #8E6170; --mesa2: #835868;
+  --hill: #6B4759; --hill2: #583B4C;
+  --back: #4A3249; --back2: #3D2A3E;
+  --wood: #3D2935; --wood2: #2A1C26; --wood3: #4A3341;
+  --win: #E0A63F; --lamp: 1; --rim: 1;
+  --walk: #2F1F2A; --ground: #9C6C5A; --ground2: #8A5D4E;
+  --signboard: #C49A82; --signink: #2B1820;
+  --fore: #150D13;
+}
+
+.sun { fill: var(--sun); }
+.cloud { fill: var(--cloud); opacity: var(--cloud-o); }
+.mesa { fill: var(--mesa); }
+.mesa2 { fill: var(--mesa2); }
+.hill { fill: var(--hill); }
+.hill2 { fill: var(--hill2); }
+.hill2-line { stroke: var(--hill2); fill: none; }
+.back { fill: var(--back); }
+.back2 { fill: var(--back2); }
+.back2-line { stroke: var(--back2); fill: none; }
+.wood { fill: var(--wood); }
+.wood2 { fill: var(--wood2); }
+.wood3 { fill: var(--wood3); }
+.wire { stroke: var(--wood2); fill: none; stroke-width: 2; }
+.win { fill: var(--win); }
+.walk { fill: var(--walk); }
+.ground { fill: var(--ground); }
+.ground2 { fill: var(--ground2); }
+.signboard { fill: var(--signboard); }
+.signink { fill: var(--signink); font-family: var(--display); }
+.sage { fill: var(--sage); }
+.fore { fill: var(--fore); }
+.shade { fill: #000; opacity: .12; }
+.smokepuff { fill: var(--cloud); }
+.rim { fill: #F09A5C; opacity: calc(var(--rim) * .55); }
+.lampglow { opacity: var(--lamp); }
+
+/* Things that are always gently alive (ART 7). Each world sets --phase so that two
+   copies cross-fading during a mood change move in step. */
+.alive { animation-delay: var(--phase, 0s); transform-box: fill-box; }
+.blades { animation: turn 9s linear infinite; transform-origin: center; }
+.smoke { animation: rise 7.5s ease-out infinite; transform-origin: center; opacity: 0; }
+.smoke.s2 { animation-delay: calc(var(--phase, 0s) + 1.5s); }
+.smoke.s3 { animation-delay: calc(var(--phase, 0s) + 3s); }
+.smoke.s4 { animation-delay: calc(var(--phase, 0s) + 4.5s); }
+.smoke.s5 { animation-delay: calc(var(--phase, 0s) + 6s); }
+.swing { animation: swing 4.2s ease-in-out infinite alternate; transform-origin: 50% 0; }
+.hop { animation: hop 7s ease-in-out infinite; }
+.drift { animation: drift 160s linear infinite alternate; }
+.flicker { animation: flicker 3.3s ease-in-out infinite alternate; }
+
+@keyframes turn { to { transform: rotate(360deg); } }
+@keyframes rise {
+  0% { transform: translate(0, 0) scale(.6); opacity: 0; }
+  12% { opacity: .32; }
+  100% { transform: translate(70px, -170px) scale(2.6); opacity: 0; }
+}
+@keyframes swing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes hop {
+  0%, 86%, 100% { transform: translate(0, 0); }
+  90% { transform: translate(5px, -9px); }
+  94% { transform: translate(10px, 0); }
+}
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-180px); } }
+@keyframes flicker { from { opacity: calc(var(--lamp) * .8); } to { opacity: var(--lamp); } }
+
+/* Atmosphere (layer 7): fixed. */
+.atmos canvas { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 58%, rgba(24, 12, 6, .42) 100%);
+}
+.grain { position: absolute; inset: 0; opacity: .10; mix-blend-mode: multiply; }
+
+/* The player and the cast walk on the street, between layers 5 and 6. */
+.figure { position: absolute; top: 0; left: 0; will-change: transform; }
+.figure svg { display: block; overflow: visible; }
+.figure .body { animation: breathe 3.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+.figure .leg, .figure .arm { transform-box: fill-box; transform-origin: 50% 0; }
+.figure.walking .body { animation: bob var(--step, .5s) ease-in-out infinite; }
+.figure.walking .leg.l1, .figure.walking .arm.a2 { animation: stride var(--stride, 1s) ease-in-out infinite alternate; }
+.figure.walking .leg.l2, .figure.walking .arm.a1 { animation: stride var(--stride, 1s) ease-in-out infinite alternate-reverse; }
+@keyframes breathe { from { transform: scaleY(1); } to { transform: scaleY(1.012); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes stride { from { transform: rotate(-17deg); } to { transform: rotate(17deg); } }
+
+/* A cut for walking switched off, or reduced motion (SPEC 6.3). */
+.cover { background: var(--paper); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.cover.on { opacity: 1; }
+
+/* Props sit over a dimmed scene (ART 7). */
+.scrim {
+  background: rgba(20, 12, 8, .42);
+  opacity: 0;
+  transition: opacity .3s ease-out;
+  pointer-events: none;
+}
+.scrim.on { opacity: 1; }
+
+/* What is on screen during a deal (SPEC 6.5). */
+.hud { pointer-events: none; }
+.hud .title, .hud .week, .hud .place {
+  position: absolute;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 8px 22px 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .25);
+}
+.hud .title { left: 40px; top: 32px; font: 30px/1.2 var(--text); transform: rotate(-.6deg); }
+.hud .week { right: 40px; top: 32px; font: 30px/1.2 var(--display); transform: rotate(.5deg); }
+.hud .place {
+  left: 50%;
+  bottom: 42px;
+  font: 40px/1.2 var(--display);
+  letter-spacing: 2px;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity .5s;
+}
+.hud .place.on { opacity: 1; }
+.hud [hidden] { display: none; }
+
+/* Debug overlay (SPEC 12.3), only with ?debug=1. */
+.debug {
+  position: absolute;
+  left: 40px;
+  bottom: 40px;
+  max-width: 700px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, .7);
+  color: #fff;
+  font: 18px/1.35 monospace;
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alive, .figure .body { animation: none; }
+  .sky > div, .world, .scrim, .hud .place { transition: none; }
 }
