@@ -98,9 +98,31 @@
           project: 'Northern Extension',
           product: 'high-tensile bridge bolts',
           lawyer: 'Ms Vance',
-          poNumber: '4471'
+          poNumber: '4471',
+          // The newspaper headline is set in capitals, so this name is too.
+          bridge: 'NORTHERN BRIDGE'
         },
         k: { orderValue: 6000, margin: 1500, claim: 20000000, cap: 50000, followOn: 75000 },
+        // Other deals for replays (SPEC 9). Ms Vance, the firm and the bolts stay the same.
+        skins: {
+          amounts: ['orderValue', 'margin', 'claim', 'cap', 'followOn'],
+          sets: [
+            {
+              scale: 2,
+              names: {
+                group: 'Corvane Rail Group', groupShort: 'Corvane', entity: 'Corvane Canyon Spur Co.',
+                buyer: 'Tolliver', project: 'Canyon Spur', poNumber: '5208', bridge: 'CANYON SPUR BRIDGE'
+              }
+            },
+            {
+              scale: 0.5,
+              names: {
+                group: 'Dunmarrow Rail Group', groupShort: 'Dunmarrow', entity: 'Dunmarrow Salt Flats Co.',
+                buyer: 'Quill', project: 'Salt Flats Line', poNumber: '3916', bridge: 'SALT FLATS BRIDGE'
+              }
+            }
+          ]
+        },
         vars: { how: null },
         start: 'po',
 
@@ -236,7 +258,7 @@
           later: {
             kind: 'beat', at: 'courthouse', show: 'paper', mood: 'night',
             lead: 'Eleven months later.',
-            headline: 'NORTHERN BRIDGE CLOSED. BOLTS BLAMED.',
+            headline: '{bridge} CLOSED. BOLTS BLAMED.',
             text: 'Line shut for the season. The railroad counts its losses and sends for its lawyers.',
             next: function (v) { return v.how === 'capped' ? 'end_deal' : 'end_lawsuit'; }
           },
@@ -330,6 +352,26 @@
           product: 'cable',
           poNumber: '7730',
           lawyer: 'Ms Vance'
+        },
+        // Other deals for replays (SPEC 9). Mr Dade, Ms Vance, the firm and the cable stay the same.
+        skins: {
+          amounts: ['orderValue', 'margin', 'remakeCost', 'extraClaim'],
+          sets: [
+            {
+              scale: 2,
+              names: {
+                contractor: 'Redmesa Construction Co.', contractorShort: 'Redmesa', pike: 'Crane',
+                engineer: 'Dr Ostrander', engineerShort: 'Ostrander', mill: 'Bitterwell Cable Works', poNumber: '8152'
+              }
+            },
+            {
+              scale: 0.5,
+              names: {
+                contractor: 'Graystake Construction Co.', contractorShort: 'Graystake', pike: 'Hollis',
+                engineer: 'Dr Fairweather', engineerShort: 'Fairweather', mill: 'Ember Ridge Cable Works', poNumber: '6614'
+              }
+            }
+          ]
         },
         k: {
           orderValue: 2000000, margin: 200000, ratePct: 1, capPct: 5, graceWeeks: 2, leadWeeks: 12,
@@ -658,11 +700,12 @@
           end_settled: {
             kind: 'ending', result: 'settled', at: 'supply', show: 'ledger',
             headline: function (v, k) {
-              const net = settle2(v, k).net;
+              // The script's bands are for the script's numbers; a skin scales them too.
+              const net = settle2(v, k).net / (k.scale || 1);
               if (net >= 180000) return 'DELIVERED. PAID. DONE.';
               if (net >= 100000) return 'LATE, AND STILL IN PROFIT';
               if (net >= 0) return 'A YEAR\'S WORK FOR SMALL CHANGE';
-              if (net >= -999999) return 'THE CLAUSE ATE THE DEAL';
+              if (net > -1000000) return 'THE CLAUSE ATE THE DEAL';
               return 'ONE PERCENT A DAY';
             }
           },

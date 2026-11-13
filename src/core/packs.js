@@ -1,4 +1,5 @@
-// The pack registry (SPEC 5.2), placeholders (PACK-FORMAT 4) and validation (PACK-FORMAT 6).
+// The pack registry (SPEC 5.2), placeholders (PACK-FORMAT 4), validation (PACK-FORMAT 6),
+// and variation: skins and wildcards dressed onto a scenario (SPEC 9, PACK-FORMAT 8).
 // Validation runs when a pack registers, so the game and the checker see the same problems.
 (function () {
   const B2B = globalThis.B2B;
@@ -14,11 +15,13 @@
   const PROP = ['at', 'show', 'text', 'lead', 'foot', 'from', 'to', 'who', 'title', 'headline',
     'stamp', 'small', 'face', 'mood'];
   const FIELDS = {
-    beat: ['kind'].concat(PROP, ['event', 'week', 'next']),
-    ending: ['kind'].concat(PROP, ['result']),
-    choice: ['kind', 'at', 'prompt', 'options', 'week'],
-    pick: ['kind', 'at', 'prompt', 'hint', 'who', 'options', 'count', 'next']
+    beat: ['kind', 'wild'].concat(PROP, ['event', 'week', 'next']),
+    ending: ['kind', 'wild'].concat(PROP, ['result']),
+    choice: ['kind', 'wild', 'at', 'prompt', 'options', 'week'],
+    pick: ['kind', 'wild', 'at', 'prompt', 'hint', 'who', 'options', 'count', 'next']
   };
+  const CARD_FIELDS = ['id', 'scenario', 'slot', 'headline', 'text', 'k', 'next'];
+  const has = function (obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); };
   const OPTION_FIELDS = {
     choice: ['id', 'label', 'note', 'set', 'next'],
     pick: ['id', 'label', 'text', 'set']
@@ -58,6 +61,62 @@
       Object.assign(out, h, { reallife: Object.assign({}, out.reallife, h.reallife) });
     });
     return out;
+  }
+
+  function wildcards() {
+    return [].concat.apply([], registered.map(function (pack) { return pack.wildcards || []; }));
+  }
+
+  // The wildcard slots a scenario's nodes name, in node order.
+  function slots(sc) {
+    const out = [];
+    Object.keys(sc.nodes).forEach(function (id) {
+      const slot = sc.nodes[id].wild;
+      if (slot && out.indexOf(slot) < 0) out.push(slot);
+    });
+    return out;
+  }
+
+  // A scenario dressed for one deal: choice.set is 0 for the script's own names or n for
+  // skins.sets[n - 1]; choice.cards are the wildcards drawn. The scale multiplies the amounts
+  // the skins list, together, after any card has changed one, so ratios and lessons hold.
+  // k.scale tells the scenario's own functions the factor. A card's slot node carries the
+  // front page as news, and a card's next replaces that node's next.
+  function dress(sc, choice) {
+    const set = choice.set ? sc.skins.sets[choice.set - 1] : null;
+    const scale = set && set.scale ? set.scale : 1;
+    const cards = choice.cards || [];
+    const k = Object.assign.apply(null, [{}, sc.k || {}].concat(cards.map(function (c) { return c.k || {}; })));
+    ((sc.skins && sc.skins.amounts) || []).forEach(function (key) { k[key] = k[key] * scale; });
+    k.scale = scale;
+    const nodes = Object.assign({}, sc.nodes);
+    cards.forEach(function (card) {
+      Object.keys(nodes).forEach(function (id) {
+        if (nodes[id].wild !== card.slot) return;
+        const node = Object.assign({}, nodes[id], { news: { headline: card.headline, text: card.text || [] } });
+        if (card.next) node.next = card.next;
+        nodes[id] = node;
+      });
+    });
+    return Object.assign({}, sc, { skin: Object.assign({}, sc.skin, set ? set.names : {}), k: k, nodes: nodes });
+  }
+
+  // Draws a session's skins, and its wildcards when they are on, from one seed (SPEC 9).
+  // Each deal draws its set, then a card or the default for each of its slots, in order.
+  function vary(list, seed, wild) {
+    const rng = B2B.rng(seed);
+    const deck = wildcards();
+    return list.map(function (sc) {
+      const choice = { set: rng.int(sc.skins ? sc.skins.sets.length + 1 : 1), cards: [] };
+      if (wild) {
+        slots(sc).forEach(function (slot) {
+          const cards = deck.filter(function (c) { return c.scenario === sc.id && c.slot === slot; });
+          const i = rng.int(cards.length + 1);
+          if (i > 0) choice.cards.push(cards[i - 1]);
+        });
+      }
+      return dress(sc, choice);
+    });
   }
 
   function cast() {
@@ -135,6 +194,7 @@
     over('lead', view.lead, 220);
     over('foot', view.foot, 220);
     over('headline', view.headline, 48);
+    if (view.news) over('front page headline', view.news.headline, 48);
     if (SHOW_LIMITS[view.show]) over('the ' + view.show + ' text', view.text.join(' '), SHOW_LIMITS[view.show]);
   }
 
@@ -202,6 +262,55 @@
     Object.keys(sc.nodes).forEach(function (id) {
       if (!reached.has(id)) say(where + ', node ' + id, 'can never be reached.');
     });
+    checkSkins(sc, houseNow, say);
+  }
+
+  // Every skin set is played through every path, like the script's own names.
+  function checkSkins(sc, houseNow, say) {
+    const where = 'Scenario ' + sc.id;
+    if (sc.k && has(sc.k, 'scale')) say(where, 'k may not have "scale": skins set it.');
+    if (!sc.skins) return;
+    const sets = sc.skins.sets;
+    if (!Array.isArray(sets) || !sets.length) return say(where, 'skins needs a list of sets.');
+    (sc.skins.amounts || []).forEach(function (key) {
+      if (typeof (sc.k || {})[key] !== 'number') say(where, 'skins amount "' + key + '" is not a number in k.');
+    });
+    sets.forEach(function (set, i) {
+      const label = ' (skin set ' + (i + 1) + ')';
+      if (set.scale != null && !(set.scale > 0)) say(where + label, 'scale must be above 0.');
+      Object.keys(set.names || {}).forEach(function (name) {
+        if (!has(sc.skin || {}, name)) say(where + label, '"' + name + '" is not a name in skin.');
+      });
+      explore(dress(sc, { set: i + 1 }), houseNow, function (w, p) { say(w + label, p); });
+    });
+  }
+
+  // A wildcard names a scenario and a slot one of its nodes declares, and changes one
+  // number in k or the next of a beat (SPEC 9). Each one is played through every path.
+  function checkCards(pack, houseNow, say) {
+    (pack.wildcards || []).forEach(function (card, i) {
+      const where = 'Wildcard ' + (card.id || i + 1);
+      Object.keys(card).forEach(function (field) {
+        if (CARD_FIELDS.indexOf(field) < 0) say(where, 'may not have "' + field + '".');
+      });
+      const sc = scenarios().find(function (s) { return s.id === card.scenario; });
+      if (!sc) return say(where, 'its scenario "' + card.scenario + '" is not loaded.');
+      const at = Object.keys(sc.nodes).filter(function (id) { return sc.nodes[id].wild === card.slot; });
+      if (!at.length) return say(where, 'no node in ' + sc.id + ' names the slot "' + card.slot + '".');
+      if (!card.headline) say(where, 'needs a headline.');
+      const changes = Object.keys(card.k || {}).length + (card.next ? 1 : 0);
+      if (changes !== 1) return say(where, 'must change exactly one number (k) or one branch (next).');
+      Object.keys(card.k || {}).forEach(function (key) {
+        if (typeof (sc.k || {})[key] !== 'number' || typeof card.k[key] !== 'number') say(where, '"' + key + '" is not a number in the k of ' + sc.id + '.');
+      });
+      if (card.next) {
+        at.forEach(function (id) {
+          if (sc.nodes[id].kind !== 'beat') say(where, 'next can change only a beat, and ' + id + ' is a ' + sc.nodes[id].kind + '.');
+        });
+        if (!has(sc.nodes, card.next)) return say(where, 'next points at "' + card.next + '", which is not a node.');
+      }
+      explore(dress(sc, { cards: [card] }), houseNow, function (w, p) { say(w + ' (wildcard ' + (card.id || i + 1) + ')', p); });
+    });
   }
 
   // Returns the problems with one pack, checked against the given house and cast.
@@ -218,6 +327,7 @@
       ids.push(sc.id);
       checkScenario(sc, houseNow, castNow, say);
     });
+    checkCards(pack, houseNow, say);
     return out;
   }
 
@@ -231,9 +341,12 @@
     house: house,
     cast: cast,
     problems: function () { return found.slice(); },
-    // The packs loaded, for the result record (SPEC 5.3).
-    loaded: function () { return registered.map(function (pack) { return { id: pack.id, version: pack.version }; }); },
+    // The packs loaded: for the set-up screen, and the result record (SPEC 5.3, 10).
+    loaded: function () { return registered.map(function (pack) { return { id: pack.id, title: pack.title, version: pack.version }; }); },
     validate: validate,
+    wildcards: wildcards,
+    dress: dress,
+    vary: vary,
     fill: fill,
     number: number
   };

@@ -62,6 +62,9 @@
       prop.style.width = at.width + 'px';
       prop.style.margin = '0';
     }
+    // A prop on its way out takes no focus, keys or clicks: a Space pressed while it slides
+    // away must not press its button a second time.
+    prop.inert = true;
     prop.classList.remove('in');
     prop.style.transform = 'translateY(' + travel() + 'px)';
     setTimeout(function () { prop.remove(); }, quick() ? 0 : 320);
