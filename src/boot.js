@@ -1,157 +1,163 @@
-// Starts everything. In M3 this is a fixed demonstration, not yet driven by the engine's
-// choices: a telegram at the telegraph office, a walk to the supply company, the mood
-// turning to dusk, and a two-option choice. The words come from scenario s1.
+// Starts everything: the stage, the player, the director, the screens around a deal, input,
+// and with ?debug=1 the debug hooks (SPEC 12.3). In M4 the session is one deal, scenario 1.
 (function () {
   const B2B = globalThis.B2B;
   const debugOn = /[?&]debug=1\b/.test(location.search);
-  // The debug hooks exist only with ?debug=1 (SPEC 12.3).
+  // The debug hooks exist only with ?debug=1.
   if (debugOn) B2B.debug = { instant: false };
-  const instant = function () { return Boolean(B2B.debug && B2B.debug.instant); };
 
   let stage;
   let player;
-  let current = null;
-  let place;
-  let overlay;
-  let timers = [];
+  let director;
+  let menu;
+  let overlay = null;
+  let house;
+  let sc;
+  let mode = null;
+  let screen = null;
+  const hud = {};
+  let placeTimer = null;
 
-  const later = function (fn, ms) { timers.push(setTimeout(fn, instant() ? 0 : ms)); };
-  const clear = function () {
-    timers.forEach(clearTimeout);
-    timers = [];
+  // The result record (SPEC 5.3). Version 1 shows it only in the debug overlay.
+  B2B.session = {
+    deals: [],
+    record: function () {
+      const deals = B2B.session.deals.map(function (d) { return Object.assign({}, d, { path: d.path.slice() }); });
+      return {
+        packs: B2B.packs.loaded(),
+        seed: null,
+        deals: deals,
+        total: deals.reduce(function (sum, d) { return sum + d.net; }, 0)
+      };
+    }
   };
-
-  function views() {
-    const s1 = B2B.packs.scenarios().find(function (sc) { return sc.id === 's1'; });
-    let state = B2B.engine.start(s1, B2B.packs.house());
-    const po = { view: B2B.engine.view(state), state: state };
-    while (state.nodeId !== 'c1') state = B2B.engine.advance(state);
-    return { title: s1.title, po: po, c1: { view: B2B.engine.view(state), state: state } };
-  }
-
-  function show(step, state) {
-    note(step + '\nscenario ' + state.scenarioId + ', node ' + state.nodeId + '\nvars ' + JSON.stringify(state.vars));
-  }
-
-  function showPlace(name) {
-    place.textContent = name;
-    place.classList.add('on');
-    later(function () { place.classList.remove('on'); }, 2000);
-  }
 
   function note(text) {
     if (overlay) overlay.textContent = text;
   }
 
-  function clearProp() {
-    if (current && current.leave) current.leave();
-    current = null;
-    stage.scrim.classList.remove('on');
+  // The name of the location, bottom centre, for two seconds on arrival (SPEC 6.5).
+  function showPlace(id) {
+    hud.place.textContent = B2B.town.sign(id, house);
+    hud.place.classList.add('on');
+    clearTimeout(placeTimer);
+    placeTimer = setTimeout(function () { hud.place.classList.remove('on'); }, 2000);
   }
 
-  const steps = {
-    // The telegraph office in daylight, the player at its door.
-    telegraphDay: function () {
-      clear();
-      clearProp();
-      stage.setMood('day', true);
-      player.facing = 1;
-      player.el.classList.remove('walking');
-      player.set(B2B.town.PLACES.telegraph);
-      stage.camera(B2B.town.PLACES.telegraph - 640);
-      showPlace((B2B.packs.house().telegraph || '').toUpperCase());
-      note('demo: telegraph, day');
-    },
-    telegram: function () {
-      const v = views();
-      current = B2B.props.telegram(stage.props, v.po.view, B2B.packs.house(), function () {
-        clearProp();
-        steps.walk();
-      });
-      place.classList.remove('on');
-      stage.scrim.classList.add('on');
-      show('demo: telegram', v.po.state);
-    },
-    walk: function () {
-      note('demo: walking to supply');
-      current = { trip: B2B.figures.walk(player, stage, B2B.town.PLACES.supply, steps.arrive) };
-    },
-    arrive: function () {
-      current = null;
-      showPlace((B2B.packs.house().firm || '').toUpperCase());
-      later(function () { stage.setMood('dusk'); note('demo: supply, dusk'); }, 400);
-      later(steps.choice, 3200);
-    },
-    choice: function () {
-      const v = views();
-      place.classList.remove('on');
-      stage.scrim.classList.add('on');
-      current = B2B.props.choice(stage.props, v.c1.view, function (id) {
-        note('demo: chose ' + id + '. Starting again.');
-        clearProp();
-        later(start, 1600);
-      });
-      show('demo: choice', v.c1.state);
-    }
-  };
-
-  function start() {
-    steps.telegraphDay();
-    later(steps.telegram, 1600);
+  function week(n) {
+    hud.week.hidden = n == null;
+    if (n != null) hud.week.textContent = 'Week ' + n;
   }
 
-  // Continue: Space, Enter, Right arrow, or a click (SPEC 6.4). 1 to 4 choose. Props take
-  // their own clicks; a click on the stage only skips a walk.
-  function onInput(e) {
-    if (!current) return;
-    if (current.trip) {
-      current.trip.finish();
-      return;
-    }
-    if (e.type === 'pointerdown') return;
-    if (e.type === 'keydown' && /^[1-4]$/.test(e.key) && current.key) {
-      current.key(Number(e.key) - 1);
-      return;
-    }
-    const go = e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight';
-    if (go && current.press) {
+  function stopScreen() {
+    if (screen && screen.stop) screen.stop();
+    screen = null;
+  }
+
+  // The intro card, over the town where the deal begins.
+  function intro() {
+    stopScreen();
+    director.stop();
+    B2B.session.deals = [];
+    const first = B2B.engine.view(B2B.engine.start(sc, house));
+    stage.setMood(first.mood || 'day', true);
+    player.facing = 1;
+    player.set(B2B.town.PLACES[first.at]);
+    stage.camera(B2B.town.PLACES[first.at] - 640);
+    hud.title.hidden = true;
+    week(null);
+    stage.scrim.classList.add('on');
+    mode = 'intro';
+    note('intro card: ' + sc.id);
+    screen = B2B.screens.intro(stage.props, 1, 1, sc.title, play);
+  }
+
+  function play() {
+    screen = null;
+    mode = 'deal';
+    hud.title.textContent = sc.title;
+    hud.title.hidden = false;
+    director.play(sc);
+  }
+
+  // Endings hold until the player continues, then the ledger, the what-ifs and the debrief.
+  function ending(state, view) {
+    const result = B2B.engine.result(state);
+    B2B.session.deals.push({ id: sc.id, path: state.path, result: view.result, net: result.net });
+    mode = 'ledger';
+    stage.scrim.classList.add('on');
+    note('ledger: ' + sc.id + ', ' + state.nodeId + '\nrecord ' + JSON.stringify(B2B.session.record()));
+    screen = B2B.ledger.show(stage.props, sc, result, house, intro);
+  }
+
+  function onView(state, view) {
+    note('scenario ' + state.scenarioId + ', node ' + state.nodeId + '\nvars ' + JSON.stringify(state.vars));
+  }
+
+  // Input (SPEC 6.4). Continue: Space, Enter, Right arrow, or a click on the prop. 1 to 9
+  // choose. Esc opens the menu. A focused button keeps Space and Enter for itself.
+  function onKey(e) {
+    if (e.key === 'Escape') {
       e.preventDefault();
-      current.press();
+      menu.toggle();
+      return;
     }
+    if (menu.open) return;
+    const go = e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight';
+    if (go && e.key !== 'ArrowRight' && e.target.closest && e.target.closest('button')) return;
+    if (mode === 'deal' && /^[1-9]$/.test(e.key)) {
+      director.key(Number(e.key) - 1);
+      return;
+    }
+    if (!go) return;
+    e.preventDefault();
+    if (mode === 'deal') director.press();
+    else if (screen) screen.press();
   }
 
-  // The debug hooks (SPEC 12.3). The M3 demonstration can be put in any of its states, so
-  // that screenshots can be taken. jump() and record() arrive with the director in M4.
+  // A click on the scene itself skips a walk, a run or the train.
+  function onPointer(e) {
+    if (menu.open && !e.target.closest('.menu, .menu-button')) menu.toggle(false);
+    if (mode === 'deal' && !e.target.closest('.prop, .strip, button, .menu')) director.click();
+  }
+
   function debugHooks() {
     overlay = document.createElement('div');
     overlay.className = 'debug';
     stage.el.appendChild(overlay);
     B2B.debug.overlay = function (on) { overlay.hidden = !on; };
-    B2B.debug.scene = function (name) {
-      B2B.debug.instant = true;
-      start();
-      clear();
-      if (name === 'telegram') steps.telegram();
-      if (name !== 'telegraph-day' && name !== 'supply-dusk') place.classList.remove('on');
-      if (name === 'walk-mid') {
-        player.set((B2B.town.PLACES.telegraph + B2B.town.PLACES.supply) / 2);
-        player.el.classList.add('walking');
-        stage.camera((B2B.town.PLACES.telegraph + B2B.town.PLACES.supply) / 2 - 700);
-      }
-      if (name === 'supply-dusk' || name === 'choice') {
-        showPlace((B2B.packs.house().firm || '').toUpperCase());
-        player.set(B2B.town.PLACES.supply);
-        stage.camera(B2B.town.PLACES.supply - 640);
-        stage.setMood('dusk', true);
-      }
-      if (name === 'choice') steps.choice();
-      B2B.debug.instant = false;
-      return name;
+    B2B.debug.player = player;
+    // Replays a path instantly and shows where it ends (SPEC 12.3). until stops at a node.
+    B2B.debug.jump = function (scenarioId, path, until) {
+      menu.toggle(false);
+      stopScreen();
+      sc = B2B.packs.scenarios().find(function (s) { return s.id === scenarioId; });
+      mode = 'deal';
+      hud.title.textContent = sc.title;
+      hud.title.hidden = false;
+      director.jump(sc, path || [], until);
+      return director.state().nodeId;
     };
+    B2B.debug.state = function () { return director.state(); };
+    // The town with nothing in front of it, at a place and in a mood, for screenshots.
+    B2B.debug.view = function (place, mood) {
+      stopScreen();
+      director.stop();
+      mode = null;
+      stage.scrim.classList.remove('on');
+      hud.place.classList.remove('on');
+      player.set(B2B.town.PLACES[place]);
+      stage.camera(B2B.town.PLACES[place] - 640);
+      stage.setMood(mood, true);
+    };
+    B2B.debug.record = function () { return B2B.session.record(); };
+    B2B.debug.mode = function () { return mode; };
     // Average frame time during a real walk, in milliseconds.
     B2B.debug.walkFrameTime = function () {
       return new Promise(function (resolve) {
-        B2B.debug.scene('telegraph-day');
+        B2B.debug.jump('s1', [], 'po');
+        director.stop();
+        hud.place.classList.remove('on');
         const times = [];
         let last = null;
         let walking = true;
@@ -171,21 +177,24 @@
   }
 
   function boot() {
+    const problems = B2B.packs.problems();
+    if (problems.length) return B2B.screens.problems(problems);
     document.body.textContent = '';
-    stage = B2B.stage.mount(document.body, B2B.packs.house(), 'day');
+    house = B2B.packs.house();
+    sc = B2B.packs.scenarios().find(function (s) { return s.id === 's1'; });
+    stage = B2B.stage.mount(document.body, house, 'day');
     player = B2B.figures.make(stage.actors);
-    const v = views();
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = v.title;
-    stage.hud.appendChild(title);
-    place = document.createElement('div');
-    place.className = 'place';
-    stage.hud.appendChild(place);
+    ['title', 'week', 'place'].forEach(function (k) {
+      hud[k] = document.createElement('div');
+      hud[k].className = k;
+      stage.hud.appendChild(hud[k]);
+    });
+    director = B2B.director.make(stage, player, { onView: onView, onEnding: ending, showPlace: showPlace, week: week });
+    menu = B2B.screens.menu(stage, [{ label: 'Restart this deal', run: intro }]);
     if (debugOn) debugHooks();
-    addEventListener('keydown', onInput);
-    stage.el.addEventListener('pointerdown', onInput);
-    start();
+    addEventListener('keydown', onKey);
+    stage.el.addEventListener('pointerdown', onPointer);
+    intro();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

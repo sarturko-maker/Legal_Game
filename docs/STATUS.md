@@ -5,35 +5,35 @@ the end of every milestone. Keep it under 40 lines.
 
 ## Now
 
-- **Current milestone:** M3, the art slice, in review (branch `m3-art-slice`). Overnight run.
-- **Open pull requests**, stacked, for the author to merge in order: #2 M1, #3 M2.
+- **Current milestone:** M4, the whole town and scenario 1 in it (branch `m4-town-s1`).
+- **Open pull requests**, stacked, for the author to merge in order: #2 M1, #3 M2, #4 M3.
 
 ## What exists
 
-- M0: `index.html` title, `tools/check.js`, `tools/shots.js`, a Stop hook running the check.
-- M1: `src/core/packs.js` (registry, placeholders, validation rules 1-7),
-  `src/core/engine.js` (SPEC 5.1), `packs/public.js`, `text.html`, `tools/transcript.js`,
-  `tools/load.js`, `tools/tests/engine.js`.
-- M2: `s2` in the pack, `pick` in the engine and in `text.html`. 150 fixture paths pass.
-- M3: `index.html` plays a fixed demo: `css/fonts.css` (+ `css/licences/`), `base.css`,
-  `props.css`, `src/render/{town,stage,figures,props}.js`, `src/boot.js`. Street x 1,400-4,000.
+- M0-M2: `tools/check.js`, `tools/shots.js`, Stop hook; `src/core/{packs,engine}.js`,
+  `packs/public.js` (`s1`, `s2`), `text.html`, `tools/{transcript,load}.js`, tests, 150 fixture paths.
+- M3: fonts and licences, `css/base.css`, `css/props.css`, `src/render/{town,stage,figures,props}.js`.
+- M4: `index.html` plays `s1` start to debrief. The whole street, five moods, the clerk,
+  the lawyer, the runner, the train, every `s1` prop, `src/render/director.js`,
+  `src/ui/ledger.js` (ledger, what-ifs, debrief), `src/ui/screens.js` (intro card, menu,
+  pack-problem screen). `B2B.session` is a stub in `boot.js` until M5.
 - `src/core/`: not even a comment may say `Date`, `window`, `document` or `Math.random`.
 
 ## Commands that work today
 
 - `node tools/check.js`: scan, packs, fixtures, tests, repository.
 - `node tools/transcript.js s1 pack law law`, `npm run fixtures`.
-- `node tools/shots.js [--frames] [--keys]`: DevTools pipe, debug hooks, both sizes.
-- Open `text.html` (plain text) or `index.html` (the M3 demo) from disk.
+- `node tools/shots.js [names] [--paths] [--keys] [--frames]`: `--paths` plays every `s1`
+  path through the screen and checks the ledger; `--keys` plays one at full speed by
+  keyboard, then by mouse, the menu, and with reduced motion.
+- Open `index.html` or `text.html` from disk. `?debug=1`: overlay, `B2B.debug.jump(...)`.
 
 ## Open questions for the author (suggested answers stand meanwhile)
 
-- `s1` blurb "An order from a company you know. Or do you?" and 6 minutes, from PACK-FORMAT.
-- `s2` blurb (the story's first sentence) and 11 minutes. D3, the `s2` numbers.
-- `s2` `protest` lead prints "MR Dade AGREED": the lead is not in capitals as a telegram is.
+- `s1`, `s2` blurbs and minutes; D3; `s2` `protest` lead "MR Dade AGREED" (not in capitals).
+- M3 look, blur behind props, Rye whole or cut down: questions on PR #4.
 
 ## For later milestones
 
-- M4: SPEC 6.3 turns face-down pages "at the same place"; `s1` turns them at another. Raise.
-- M6: the engine keeps the last scenario started under each id. When a private pack
-  replaces `s1`, make sure the game starts the replacement.
+- M5: set-up, year end, real `B2B.session`, the other menu entries, `card` and pick on screen.
+- M6: when a private pack replaces `s1`, check the game starts the replacement.

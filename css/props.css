@@ -1,23 +1,68 @@
 /* The paper props and the panels (ART 9, SPEC 7). Real type on paper, a soft shadow, and a
-   slight rotation set by props.js. */
-.prop {
-  position: absolute;
-  left: 50%;
+   slight rotation set by props.js. Props stand in one centred column: lead, prop, foot. */
+.props {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 96px 0 64px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.props > * { pointer-events: auto; }
+
+.prop, .strip {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
   background: var(--paper);
   color: var(--ink);
   box-shadow: 0 22px 46px rgba(10, 5, 2, .42), 0 2px 0 var(--paper-edge);
   opacity: 0;
   transition: transform .3s ease-out, opacity .3s ease-out;
 }
-.prop.in { opacity: 1; }
+.prop.in, .strip.in { opacity: 1; }
+.prop.now, .strip.now { transition: none; }
+.prop p, .strip p { margin: 0; }
+
+/* Lead and foot: narration on a strip of paper. */
+.strip {
+  max-width: 1240px;
+  padding: 14px 34px 12px;
+  font: italic 30px/1.35 var(--text);
+}
+.strip.foot { background: #E9DABC; }
+
+/* A note: low over the scene, which is not dimmed. */
+.prop.note {
+  margin-top: auto;
+  margin-bottom: 70px;
+  font-style: normal;
+}
+
+.continue {
+  position: absolute;
+  right: -18px;
+  bottom: -30px;
+  padding: 10px 26px 8px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 26px/1.2 var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.continue.ready { opacity: 1; }
+.continue:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+.continue kbd { font: 18px/1 var(--type); margin-left: 10px; opacity: .7; }
+.prop.note .continue { bottom: -24px; padding: 6px 20px 4px; font-size: 22px; }
 
 /* Telegram: a printed form, ruled lines, a received stamp, typed capitals. */
 .telegram {
-  top: 120px;
   width: 1180px;
-  margin-left: -590px;
   padding: 44px 72px 56px;
-  box-sizing: border-box;
   cursor: pointer;
 }
 .telegram .company {
@@ -53,6 +98,8 @@
 }
 .telegram .message .stop { color: #6B5A4C; }
 .telegram .message .later { visibility: hidden; }
+
+/* Stamps land with a small overshoot and a slight turn (ART 7). */
 .stamp {
   position: absolute;
   padding: 6px 20px 4px;
@@ -63,36 +110,206 @@
   letter-spacing: 2px;
   mix-blend-mode: multiply;
   opacity: 0;
+  pointer-events: none;
 }
 .stamp small { display: block; font: 18px/1.2 var(--display); letter-spacing: 3px; }
 .telegram .stamp { right: 64px; top: 128px; }
 .stamp.landed { animation: land .26s cubic-bezier(.3, 1.4, .6, 1) forwards; }
+.now .stamp.landed { animation-duration: 0s; }
 @keyframes land {
   from { opacity: 0; transform: scale(1.35) rotate(var(--turn, -8deg)); }
   to { opacity: 1; transform: scale(1) rotate(var(--turn, -8deg)); }
 }
 
-.continue {
-  position: absolute;
-  right: -18px;
-  bottom: -30px;
-  padding: 10px 26px 8px;
-  border: 0;
-  background: var(--ink);
-  color: var(--paper);
-  font: 26px/1.2 var(--text);
+/* Page: contract paper. Face down, the backing sheet with the title and a red seal. It
+   turns over on its vertical axis. */
+.page {
+  width: 1040px;
+  perspective: 2600px;
+  background: none;
+  box-shadow: none;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity .25s;
 }
-.continue.ready { opacity: 1; }
-.continue kbd { font: 18px/1 var(--type); margin-left: 10px; opacity: .7; }
+.page .sheet {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  box-shadow: 0 16px 36px rgba(10, 5, 2, .36);
+}
+.page .sheet.one { transform: translate(10px, 8px) rotate(.8deg); }
+.page .sheet.two { transform: translate(-8px, 14px) rotate(-1.1deg); }
+.page .card {
+  position: relative;
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform .4s ease-in-out;
+}
+.page.down .card, .page .card.turned { transform: rotateY(180deg); }
+.page .side {
+  grid-area: 1 / 1;
+  min-height: 420px;
+  padding: 58px 96px 64px;
+  box-sizing: border-box;
+  background: var(--paper);
+  box-shadow: 0 22px 46px rgba(10, 5, 2, .42), 0 2px 0 var(--paper-edge);
+  backface-visibility: hidden;
+}
+.page .back {
+  transform: rotateY(180deg);
+  overflow: hidden;
+  background: #E8D7B5;
+}
+.page .backing {
+  margin-top: 60px;
+  padding: 26px 0;
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  font: 36px/1.3 var(--text);
+  text-align: center;
+}
+.page .seal {
+  position: absolute;
+  right: -46px;
+  bottom: 70px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: inset 0 0 0 10px #8F3125;
+}
+.page .front { font: 30px/1.45 var(--text); }
+.page h2 { margin: 0 0 22px; font: 36px/1.25 var(--text); text-align: center; }
+.page .byline { margin: 26px 0 0; font: italic 26px/1.2 var(--text); text-align: right; color: #5E5752; }
+.page .front p + p { margin-top: 20px; }
+/* A clause someone has marked: a pencil line in the margin. */
+.page p.marked { position: relative; }
+.page p.marked::before {
+  content: '';
+  position: absolute;
+  left: -40px;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  border-radius: 2px;
+  background: #6B6460;
+  transform: rotate(1.2deg);
+}
+.page .stamp { right: 60px; top: 40px; }
+
+/* Ledger: a ruled account-book page. Also the ending ledger (ui/ledger.js). */
+.book {
+  width: 1120px;
+  padding: 48px 80px 54px 150px;
+  background:
+    linear-gradient(90deg, transparent 96px, #C98A7E 96px 99px, transparent 99px 104px, #C98A7E 104px 107px, transparent 107px),
+    repeating-linear-gradient(transparent 0 52px, #CDB892 52px 54px) 0 40px / 100% auto var(--paper);
+  font: 30px/54px var(--text);
+  cursor: pointer;
+}
+.book h2 { margin: 0 0 10px; font: 40px/54px var(--display); letter-spacing: 1px; }
+.book .entry { min-height: 54px; }
+.book .entry + .entry { margin-top: 0; }
+
+/* Poster: wood type at full size, nail holes, uneven inking. */
+.poster {
+  width: 1240px;
+  padding: 56px 90px 60px;
+  text-align: center;
+  font: 30px/1.4 var(--text);
+  cursor: pointer;
+}
+.poster h2 {
+  position: relative;
+  margin: 0 0 30px;
+  font: 150px/1 var(--display);
+  letter-spacing: 2px;
+}
+.poster.stamped h2 { margin-bottom: 178px; }
+.poster .inking { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.poster p + p { margin-top: 18px; }
+.poster .nail {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3A2E27;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .25);
+}
+.poster .nail.tl { left: 22px; top: 22px; }
+.poster .nail.tr { right: 22px; top: 22px; }
+.poster .nail.bl { left: 22px; bottom: 22px; }
+.poster .nail.br { right: 22px; bottom: 22px; }
+/* A stamp across a poster is struck on a pasted slip, so it stays legible over the type. */
+.poster .stamp.across {
+  left: 50%;
+  top: 384px;
+  transform-origin: center;
+  translate: -50% 0;
+  padding: 14px 30px 8px;
+  border-width: 8px;
+  outline: 14px solid var(--paper);
+  background: var(--paper);
+  font-size: 64px;
+  white-space: nowrap;
+  mix-blend-mode: normal;
+  box-shadow: 0 0 0 14px var(--paper), 0 8px 22px 14px rgba(10, 5, 2, .25);
+}
+
+/* Newspaper: masthead, rule, date line, headline, body. */
+.news {
+  width: 1100px;
+  padding: 40px 70px 52px;
+  font: 30px/1.4 var(--text);
+  cursor: pointer;
+}
+.news .masthead {
+  font: 62px/1.1 var(--display);
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 4px double var(--ink);
+}
+.news .dateline {
+  padding: 6px 0;
+  border-bottom: 2px solid var(--ink);
+  font: italic 22px/1.2 var(--text);
+  letter-spacing: 4px;
+  text-align: center;
+}
+.news h2 { margin: 26px 0 18px; font: 64px/1.05 var(--display); text-align: center; }
+.news p { text-align: center; }
+.news p + p { margin-top: 12px; }
+
+/* Say: the portrait oval, name and title beneath, the words to the right. */
+.say {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  column-gap: 52px;
+  align-items: center;
+  width: 1220px;
+  padding: 40px 70px 46px 50px;
+  cursor: pointer;
+}
+.say .speaker { text-align: center; }
+.say .oval {
+  width: 210px;
+  height: 270px;
+  margin: 0 auto 14px;
+  border: 7px double var(--ink);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #EADBB8, #CDB48B);
+}
+.say .oval svg { display: block; width: 100%; height: 100%; }
+.say .name { font: 28px/1.2 var(--text); }
+.say .name::first-letter { text-transform: uppercase; }
+.say .role { font: italic 24px/1.2 var(--text); color: #4A3B30; }
+.say .words { font: 32px/1.45 var(--text); }
+.say .words p + p { margin-top: 16px; }
 
 /* The choice panel: each option a paper ticket with its key number in a circle. */
 .panel {
-  bottom: 70px;
   width: 1260px;
-  margin-left: -630px;
+  margin-top: auto;
   background: none;
   box-shadow: none;
 }
@@ -161,8 +378,119 @@
   color: var(--red);
 }
 
+/* The ending ledger, what each protection was worth, and the debrief (SPEC 8). */
+.accounts { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums lining-nums; }
+.accounts td { height: 54px; padding: 0; vertical-align: bottom; }
+/* Amounts in the typewriter face: its figures are all one width, so the columns line up
+   (ART 9, tabular figures). */
+.accounts td.amount { text-align: right; white-space: nowrap; padding-left: 40px; font-family: var(--type); }
+.accounts .minus { color: var(--red); }
+.accounts tr.tally td { font-style: italic; }
+.accounts tr.result td {
+  border-top: 2px solid var(--ink);
+  box-shadow: inset 0 4px 0 var(--paper), inset 0 6px 0 var(--ink);
+  font-size: 36px;
+  padding-top: 10px;
+  transition: opacity .4s;
+}
+.accounts tr.result.later td { opacity: 0; }
+.book .aside { font: italic 28px/54px var(--text); }
+.book .whatif { padding-left: 0; }
+.book .small, .debrief .small { font: italic 22px/1.35 var(--text); color: #4A3B30; }
+
+.debrief {
+  width: 1300px;
+  padding: 44px 80px 60px 100px;
+  font: 30px/1.4 var(--text);
+}
+.debrief h2 { margin: 0 0 18px; font: 44px/1.2 var(--display); }
+.debrief ol { margin: 0; padding-left: 40px; }
+.debrief li { position: relative; margin: 0 0 14px; padding-left: 8px; }
+/* A lesson that bit on this run: a pencil mark in the margin, and the words. */
+.debrief li.bit::before {
+  content: '';
+  position: absolute;
+  left: -78px;
+  top: 4px;
+  width: 26px;
+  height: 30px;
+  border-left: 4px solid #6B6460;
+  border-bottom: 4px solid #6B6460;
+  transform: rotate(-38deg) scale(.8, .5);
+}
+.debrief .bitnote { font: italic 22px/1.2 var(--text); color: var(--red); margin-left: 8px; }
+.debrief .real {
+  margin-top: 26px;
+  padding: 18px 28px 20px;
+  border: 3px double var(--ink);
+}
+.debrief .real h3 { margin: 0 0 6px; font: 28px/1.2 var(--display); }
+.again {
+  display: block;
+  margin: 30px 0 0 auto;
+  padding: 12px 34px 10px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 30px/1.2 var(--text);
+  cursor: pointer;
+}
+.again:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+
+/* The intro card and the facilitator menu. */
+.intro {
+  width: 900px;
+  padding: 70px 80px 74px;
+  text-align: center;
+  cursor: pointer;
+}
+.intro .count { font: italic 30px/1.2 var(--text); letter-spacing: 4px; }
+.intro h1 { margin: 24px 0 0; font: 96px/1.05 var(--display); font-weight: normal; }
+.menu-button {
+  position: absolute;
+  right: 40px;
+  bottom: 36px;
+  padding: 8px 18px 6px;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 24px/1.2 var(--text);
+  cursor: pointer;
+  opacity: .8;
+}
+.menu-button:focus-visible, .menu button:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+.menu-button kbd { font: 16px/1 var(--type); margin-left: 8px; opacity: .7; }
+.menu {
+  position: absolute;
+  right: 40px;
+  bottom: 96px;
+  width: 460px;
+  padding: 28px 34px 30px;
+  background: var(--paper);
+  box-shadow: 0 22px 46px rgba(10, 5, 2, .42);
+}
+.menu h2 { margin: 0 0 16px; font: 34px/1.2 var(--display); }
+.menu button {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 12px 18px 10px;
+  border: 2px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  font: 28px/1.2 var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.menu button:hover { background: #E9DABC; }
+
+/* The plain error screen for pack problems (SPEC 5.2). */
+.problems { max-width: 1100px; margin: 60px auto; font: 22px/1.5 var(--text); }
+.problems h1 { font: 40px/1.2 var(--display); }
+
 /* Reduced motion: props fade where they stand, and stamps appear without landing (SPEC 13). */
 @media (prefers-reduced-motion: reduce) {
-  .prop { transition: opacity .2s; }
+  .prop, .strip { transition: opacity .2s; }
   .stamp.landed { animation: none; opacity: 1; transform: rotate(var(--turn, -8deg)); }
+  .page .card { transition: none; }
 }

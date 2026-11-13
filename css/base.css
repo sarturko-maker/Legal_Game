@@ -73,6 +73,9 @@ body > h1 {
 /* Skies, top to horizon (ART 4). */
 .sky-day { background: linear-gradient(#7FB3C8 0%, #CFE3DC 48%, #F3E3BF 66%); }
 .sky-dusk { background: linear-gradient(#3B2F5B 0%, #C7624A 46%, #F2B25C 66%); }
+.sky-dawn { background: linear-gradient(#2E3A5C 0%, #E7A07A 48%, #F6D9A8 66%); }
+.sky-night { background: linear-gradient(#0E1022 0%, #1F2440 46%, #3A3A5C 66%); }
+.sky-storm { background: linear-gradient(#2A2D33 0%, #5A5A57 46%, #9A8F7A 66%); }
 
 /* Silhouette tones by mood. Far is pale, near is dark. */
 .mood-day {
@@ -84,6 +87,7 @@ body > h1 {
   --win: #2A201B; --lamp: 0; --rim: 0;
   --walk: #47352A; --ground: #C9A27A; --ground2: #B88F68;
   --signboard: #E9D9B4; --signink: #2B211C;
+  --stone: #9C8C78; --stone2: #7A6B5A; --stone3: #B0A08A;
   --fore: #1F1712;
 }
 .mood-dusk {
@@ -95,7 +99,47 @@ body > h1 {
   --win: #E0A63F; --lamp: 1; --rim: 1;
   --walk: #2F1F2A; --ground: #9C6C5A; --ground2: #8A5D4E;
   --signboard: #C49A82; --signink: #2B1820;
+  --stone: #5A4250; --stone2: #46333F; --stone3: #6A505E;
   --fore: #150D13;
+}
+/* Dawn: a cool, low light from the east. Long shadows west, no lamps. */
+.mood-dawn {
+  --sun: #FBE3B0; --cloud: #F4C3A6; --cloud-o: .6;
+  --mesa: #A99BA8; --mesa2: #9C8E9E;
+  --hill: #8A7B8A; --hill2: #766676;
+  --back: #645363; --back2: #554555;
+  --wood: #4E3A3A; --wood2: #35272A; --wood3: #5C4646;
+  --win: #2A201E; --lamp: 0; --rim: 0; --long: .2;
+  --walk: #3F2F2E; --ground: #C89C80; --ground2: #B6896F;
+  --signboard: #E4CCB0; --signink: #2B211C;
+  --stone: #8C7C7A; --stone2: #6E5F5E; --stone3: #9E8E8A;
+  --fore: #1C1418;
+}
+/* Night: blue-black, lit windows and lanterns, a moon. */
+.mood-night {
+  --sun: #EDE6CF; --cloud: #3A3E5E; --cloud-o: .6;
+  --mesa: #2C3050; --mesa2: #272A48;
+  --hill: #232642; --hill2: #1D2038;
+  --back: #1A1C32; --back2: #15172A;
+  --wood: #1E1C2A; --wood2: #141320; --wood3: #2A2738;
+  --win: #E0A63F; --lamp: 1; --rim: 0;
+  --walk: #1A1824; --ground: #3C3A4E; --ground2: #343244;
+  --signboard: #8E8578; --signink: #15131C;
+  --stone: #2A2938; --stone2: #201F2C; --stone3: #34334A;
+  --fore: #08080E;
+}
+/* Storm: grey-brown, no sun, low fast cloud, dust in the air. */
+.mood-storm {
+  --sun: transparent; --cloud: #4A4A48; --cloud-o: .85;
+  --mesa: #77736A; --mesa2: #6C685F;
+  --hill: #615C53; --hill2: #534F47;
+  --back: #4C4842; --back2: #423E38;
+  --wood: #3E3631; --wood2: #2B2522; --wood3: #4A413B;
+  --win: #3A322C; --lamp: 0; --rim: 0;
+  --walk: #3A322D; --ground: #8F8170; --ground2: #807262;
+  --signboard: #CBBFA6; --signink: #2B211C;
+  --stone: #6A645A; --stone2: #555048; --stone3: #7A7468;
+  --fore: #171310;
 }
 
 .sun { fill: var(--sun); }
@@ -120,6 +164,16 @@ body > h1 {
 .signink { fill: var(--signink); font-family: var(--display); }
 .sage { fill: var(--sage); }
 .fore { fill: var(--fore); }
+.stone { fill: var(--stone); }
+.stone2 { fill: var(--stone2); }
+.stone3 { fill: var(--stone3); }
+.flag { fill: var(--signboard); }
+.paperbit { fill: var(--wood3); }
+.longshadow { fill: #1A1020; opacity: var(--long, 0); }
+.star { fill: #FFF6DC; opacity: .75; }
+.halo { fill: #EDE6CF; opacity: .08; }
+.gustband { fill: var(--ground); opacity: 0; }
+.weed { fill: none; stroke: var(--wood3); stroke-width: 3; }
 .shade { fill: #000; opacity: .12; }
 .smokepuff { fill: var(--cloud); }
 .rim { fill: #F09A5C; opacity: calc(var(--rim) * .55); }
@@ -139,6 +193,15 @@ body > h1 {
 .drift { animation: drift 160s linear infinite alternate; }
 .flicker { animation: flicker 3.3s ease-in-out infinite alternate; }
 .shimmer { animation: shimmer 3.8s ease-in-out infinite alternate; transform-origin: center; }
+.wave { animation: wave 2.6s ease-in-out infinite alternate; transform-origin: 0 50%; }
+.boom { animation: boom 11s ease-in-out infinite alternate; transform-origin: 0 50%; }
+.gust { animation: gust 5s ease-in-out infinite; transform-origin: center; }
+.tumble { animation: tumble 9s linear infinite; }
+.roll { animation: turn 1.4s linear infinite; transform-origin: center; }
+/* A storm: everything that moves, moves harder (ART 4). */
+.mood-storm .swing { animation: swinghard 1.3s ease-in-out infinite alternate; }
+.mood-storm .wave { animation-duration: .9s; }
+.drift.fast { animation-duration: 40s; }
 /* After the shorthands above, which would otherwise reset it. */
 .alive { animation-delay: var(--phase, 0s); }
 
@@ -149,6 +212,20 @@ body > h1 {
   100% { transform: translate(70px, -170px) scale(2.6); opacity: 0; }
 }
 @keyframes swing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes swinghard { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes wave { from { transform: skewY(-4deg) scaleX(.92); } to { transform: skewY(4deg) scaleX(1); } }
+@keyframes boom { from { transform: rotate(-5deg); } to { transform: rotate(4deg); } }
+@keyframes gust {
+  0% { transform: translateX(-200px) scaleX(.6); opacity: 0; }
+  40% { opacity: .5; }
+  100% { transform: translateX(500px) scaleX(1.3); opacity: 0; }
+}
+@keyframes tumble {
+  0% { transform: translateX(0); opacity: 0; }
+  6% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(1900px); opacity: 0; }
+}
 @keyframes hop {
   0%, 86%, 100% { transform: translate(0, 0); }
   90% { transform: translate(5px, -9px); }
@@ -178,6 +255,33 @@ body > h1 {
 .figure.walking .body { animation: bob var(--step, .5s) ease-in-out infinite; }
 .figure.walking .leg.l1, .figure.walking .arm.a2 { animation: stride var(--stride, 1s) ease-in-out infinite alternate; }
 .figure.walking .leg.l2, .figure.walking .arm.a1 { animation: stride var(--stride, 1s) ease-in-out infinite alternate-reverse; }
+/* The runner at full tilt, and the train. */
+.figure.running .body { animation: bob .16s ease-in-out infinite; }
+.figure.running .leg.l1, .figure.running .arm.a2 { animation: run .32s ease-in-out infinite alternate; }
+.figure.running .leg.l2, .figure.running .arm.a1 { animation: run .32s ease-in-out infinite alternate-reverse; }
+.runner .slip { opacity: 0; }
+.runner.carrying .slip { opacity: 1; }
+.runner .cap { transform-box: fill-box; transform-origin: 100% 100%; }
+.runner.running .cap { animation: flap .2s ease-in-out infinite alternate; }
+.train .wheel { transform-box: fill-box; transform-origin: center; }
+.train.moving .wheel { animation: turn .7s linear infinite reverse; }
+.train .puff { fill: #F1E4C9; opacity: 0; transform-box: fill-box; transform-origin: center; animation: steam 2.4s ease-out infinite; }
+.train.moving .puff { animation-duration: 1.1s; }
+.train .p1 { animation-delay: -.5s; }
+.train .p2 { animation-delay: -1s; }
+.train .p3 { animation-delay: -1.5s; }
+.train .p4 { animation-delay: -2s; }
+.train.moving .p1 { animation-delay: -.22s; }
+.train.moving .p2 { animation-delay: -.44s; }
+.train.moving .p3 { animation-delay: -.66s; }
+.train.moving .p4 { animation-delay: -.88s; }
+@keyframes run { from { transform: rotate(-34deg); } to { transform: rotate(34deg); } }
+@keyframes flap { from { transform: rotate(-6deg); } to { transform: rotate(10deg); } }
+@keyframes steam {
+  0% { transform: translate(0, 0) scale(.5); opacity: 0; }
+  15% { opacity: .55; }
+  100% { transform: translate(120px, -90px) scale(2.8); opacity: 0; }
+}
 @keyframes breathe { from { transform: scaleY(1); } to { transform: scaleY(1.012); } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes stride { from { transform: rotate(-17deg); } to { transform: rotate(17deg); } }
@@ -231,6 +335,6 @@ body > h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alive, .figure .body { animation: none; }
+  .alive, .figure .body, .train .puff, .train .wheel, .runner .cap { animation: none; }
   .sky > div, .world, .scrim, .hud .place { transition: none; }
 }
