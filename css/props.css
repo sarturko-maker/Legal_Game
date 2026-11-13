@@ -1,0 +1,168 @@
+/* The paper props and the panels (ART 9, SPEC 7). Real type on paper, a soft shadow, and a
+   slight rotation set by props.js. */
+.prop {
+  position: absolute;
+  left: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 22px 46px rgba(10, 5, 2, .42), 0 2px 0 var(--paper-edge);
+  opacity: 0;
+  transition: transform .3s ease-out, opacity .3s ease-out;
+}
+.prop.in { opacity: 1; }
+
+/* Telegram: a printed form, ruled lines, a received stamp, typed capitals. */
+.telegram {
+  top: 120px;
+  width: 1180px;
+  margin-left: -590px;
+  padding: 44px 72px 56px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.telegram .company {
+  font: 50px/1 var(--display);
+  letter-spacing: 3px;
+  text-align: center;
+  padding-bottom: 14px;
+  border-bottom: 3px solid var(--ink);
+  box-shadow: 0 5px 0 var(--paper), 0 7px 0 var(--ink);
+}
+.telegram .kind {
+  margin-top: 20px;
+  font: italic 24px/1.2 var(--text);
+  letter-spacing: 6px;
+  text-align: center;
+}
+.telegram .who {
+  margin: 26px 0 8px;
+  font: 24px/1.3 var(--text);
+}
+.telegram .who b {
+  font: 30px/1.3 var(--type);
+  font-weight: normal;
+  margin-left: 14px;
+  text-transform: uppercase;
+}
+.telegram .message {
+  min-height: 174px;
+  font: 34px/58px var(--type);
+  text-transform: uppercase;
+  background: repeating-linear-gradient(transparent 0 55px, var(--paper-edge) 55px 57px, transparent 57px 58px);
+  word-spacing: 4px;
+}
+.telegram .message .stop { color: #6B5A4C; }
+.telegram .message .later { visibility: hidden; }
+.stamp {
+  position: absolute;
+  padding: 6px 20px 4px;
+  border: 5px solid var(--red);
+  color: var(--red);
+  font: 34px/1.05 var(--display);
+  text-align: center;
+  letter-spacing: 2px;
+  mix-blend-mode: multiply;
+  opacity: 0;
+}
+.stamp small { display: block; font: 18px/1.2 var(--display); letter-spacing: 3px; }
+.telegram .stamp { right: 64px; top: 128px; }
+.stamp.landed { animation: land .26s cubic-bezier(.3, 1.4, .6, 1) forwards; }
+@keyframes land {
+  from { opacity: 0; transform: scale(1.35) rotate(var(--turn, -8deg)); }
+  to { opacity: 1; transform: scale(1) rotate(var(--turn, -8deg)); }
+}
+
+.continue {
+  position: absolute;
+  right: -18px;
+  bottom: -30px;
+  padding: 10px 26px 8px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 26px/1.2 var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.continue.ready { opacity: 1; }
+.continue kbd { font: 18px/1 var(--type); margin-left: 10px; opacity: .7; }
+
+/* The choice panel: each option a paper ticket with its key number in a circle. */
+.panel {
+  bottom: 70px;
+  width: 1260px;
+  margin-left: -630px;
+  background: none;
+  box-shadow: none;
+}
+.panel .prompt {
+  display: inline-block;
+  margin: 0 0 18px 6px;
+  padding: 12px 30px 10px;
+  background: var(--paper);
+  font: italic 38px/1.25 var(--text);
+  box-shadow: 0 10px 26px rgba(10, 5, 2, .35);
+  transform: rotate(-.5deg);
+}
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  align-items: center;
+  column-gap: 22px;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 18px 34px 16px 22px;
+  border: 0;
+  border-left: 3px dashed var(--paper-edge);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 10px 26px rgba(10, 5, 2, .35);
+  cursor: pointer;
+  transition: transform .12s ease-out;
+}
+.ticket:nth-child(odd) { transform: rotate(.35deg); }
+.ticket:nth-child(even) { transform: rotate(-.3deg); }
+.ticket:hover { transform: translateY(-4px); }
+.ticket:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+.ticket .key {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  font: 32px/1 var(--display);
+}
+.ticket .label { display: block; font: 34px/1.2 var(--text); }
+.ticket .note { display: block; margin-top: 4px; font: italic 24px/1.25 var(--text); color: #4A3B30; }
+/* A punched ticket: a visible hole and a tick, never colour alone. */
+.ticket.punched::after {
+  content: '';
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+  border-radius: 50%;
+  background: #1A120D;
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, .6);
+}
+.ticket.punched::before {
+  content: '\2713';
+  position: absolute;
+  right: 78px;
+  top: 50%;
+  margin-top: -26px;
+  font: 44px/1 var(--text);
+  color: var(--red);
+}
+
+/* Reduced motion: props fade where they stand, and stamps appear without landing (SPEC 13). */
+@media (prefers-reduced-motion: reduce) {
+  .prop { transition: opacity .2s; }
+  .stamp.landed { animation: none; opacity: 1; transform: rotate(var(--turn, -8deg)); }
+}
