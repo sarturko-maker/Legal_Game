@@ -291,5 +291,5 @@
     return trip;
   }
 
-  B2B.figures = { make: make, walk: walk, cast: cast, portrait: portrait, runner: runner, train: train, FEET: FEET };
+  B2B.figures = { make: make, walk: walk, cast: cast, portrait: portrait, runner: runner, train: train };
 })();

@@ -335,6 +335,7 @@ body > h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alive, .figure .body, .train .puff, .train .wheel, .runner .cap { animation: none; }
+  /* Nothing in the stage loops, strides or swings, whatever rule started it (SPEC 13). */
+  #stage *, #stage *::before, #stage *::after { animation: none !important; }
   .sky > div, .world, .scrim, .hud .place { transition: none; }
 }
