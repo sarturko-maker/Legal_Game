@@ -210,6 +210,21 @@
 .book .entry { min-height: 54px; }
 .book .entry + .entry { margin-top: 0; }
 
+/* Card: a stiff printed card, the title in display type, numbered points. */
+.printcard {
+  width: 1100px;
+  padding: 50px 80px 50px;
+  background: #EFDDB8;
+  box-shadow: inset 0 0 0 14px #EFDDB8, inset 0 0 0 17px var(--ink), 0 22px 46px rgba(10, 5, 2, .42), 0 3px 0 #C8B288;
+  font: 30px/1.4 var(--text);
+  cursor: pointer;
+}
+.printcard h2 { margin: 0 0 24px; font: 46px/1.15 var(--display); text-align: center; letter-spacing: 1px; }
+.printcard .points p { padding-left: 4px; }
+.printcard .points p + p { margin-top: 14px; }
+.printcard .small { margin: -12px 0 22px; text-align: center; }
+.printcard .small, .book .small { font: italic 24px/1.35 var(--text); color: #4A3B30; }
+
 /* Poster: wood type at full size, nail holes, uneven inking. */
 .poster {
   width: 1240px;
@@ -355,6 +370,43 @@
 }
 .ticket .label { display: block; font: 34px/1.2 var(--text); }
 .ticket .note { display: block; margin-top: 4px; font: italic 24px/1.25 var(--text); color: #4A3B30; }
+/* The pick panel: a hint under the prompt, toggling tickets, and Confirm. */
+.pickpanel .hint .oval {
+  flex: none;
+  width: 66px;
+  height: 84px;
+  border: 4px double var(--ink);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #EADBB8, #CDB48B);
+}
+.pickpanel .hint .oval svg { display: block; width: 100%; height: 100%; }
+.pickpanel .hint {
+  margin: -6px 0 16px 6px;
+  padding: 8px 24px 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  background: #E9DABC;
+  font: italic 26px/1.3 var(--text);
+  box-shadow: 0 8px 20px rgba(10, 5, 2, .3);
+}
+.pickpanel .ticket { margin-bottom: 12px; }
+.confirm {
+  display: block;
+  margin: 8px 0 0 auto;
+  padding: 12px 30px 10px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 30px/1.2 var(--text);
+  cursor: pointer;
+}
+.confirm kbd { font: 18px/1 var(--type); margin-left: 12px; opacity: .7; }
+.confirm:disabled { background: var(--paper-edge); color: #4A3B30; cursor: default; }
+.confirm:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+.confirm.pressed { transform: translateY(2px); }
+
 /* A punched ticket: a visible hole and a tick, never colour alone. */
 .ticket.punched::after {
   content: '';
@@ -483,6 +535,62 @@
   cursor: pointer;
 }
 .menu button:hover { background: #E9DABC; }
+
+/* Title, set-up and year end. */
+.titlecard { width: 1100px; padding: 80px 90px 70px; text-align: center; }
+.titlecard h1 { margin: 0; font: 150px/1 var(--display); font-weight: normal; letter-spacing: 2px; }
+.titlecard .pitch { margin: 24px 0 0; font: italic 38px/1.3 var(--text); }
+.buttons { display: flex; justify-content: center; gap: 28px; margin-top: 46px; }
+.big {
+  padding: 14px 46px 12px;
+  border: 3px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: 36px/1.2 var(--text);
+  cursor: pointer;
+}
+.big.quiet { background: none; color: var(--ink); }
+.big:focus-visible, .setup input:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
+.setup { width: 1300px; padding: 44px 80px 50px; font: 30px/1.35 var(--text); }
+.setup h2 { margin: 0 0 18px; font: 48px/1.2 var(--display); }
+.setup .deal {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  column-gap: 20px;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 2px solid var(--paper-edge);
+  cursor: pointer;
+}
+.setup input[type=checkbox], .setup input[type=radio] { width: 34px; height: 34px; margin: 6px 0 0; accent-color: var(--ink); cursor: pointer; }
+.setup .name { display: block; font: 36px/1.2 var(--display); }
+.setup .blurb { display: block; font: italic 28px/1.3 var(--text); }
+.setup .meta { display: block; font: 22px/1.3 var(--text); color: #4A3B30; letter-spacing: 1px; }
+.setup .options { display: flex; gap: 60px; margin-top: 24px; }
+.setup fieldset { margin: 0; padding: 0; border: 0; }
+.setup legend { padding: 0; margin-bottom: 6px; font: 26px/1.2 var(--display); }
+.setup fieldset label { display: inline-flex; align-items: center; gap: 10px; margin-right: 28px; cursor: pointer; }
+.setup fieldset input { margin: 0; }
+.setup .start { display: block; margin: 34px 0 0 auto; }
+.yearend { width: 1200px; cursor: default; }
+.yearend h2 { font-size: 48px; }
+.yearend td.outcome { font-style: italic; padding-left: 30px; }
+.yearend .buttons { justify-content: flex-end; margin-top: 30px; }
+
+/* Large text: the props grow, the scene does not (ART 8, SPEC 13). */
+.large .props { padding: 70px 0 40px; gap: 30px; }
+.large .props > * { zoom: 1.25; }
+/* The longest screens are wider in large text, so they wrap less and still fit. */
+.large .props > .debrief { width: 1440px; padding: 34px 70px 40px 96px; }
+.large .debrief h2 { margin-bottom: 10px; }
+.large .debrief li { margin-bottom: 8px; }
+.large .debrief .real { margin-top: 16px; padding: 12px 24px 14px; }
+.large .debrief .again { margin-top: 16px; }
+/* A poster's body grows to large text, but its headline and stamp keep their normal size. */
+.large .props > .poster { padding: 40px 80px 44px; }
+.large .poster h2 { font-size: 120px; }
+.large .poster.stamped h2 { margin-bottom: 142px; }
+.large .poster .stamp.across { top: 304px; font-size: 52px; }
 
 /* The plain error screen for pack problems (SPEC 5.2). */
 .problems { max-width: 1100px; margin: 60px auto; font: 22px/1.5 var(--text); }

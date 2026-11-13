@@ -7,7 +7,7 @@
   function el(tag, cls, parent, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
+    if (text != null) e.textContent = B2B.props.typeset(text);
     if (parent) parent.appendChild(e);
     return e;
   }
@@ -94,8 +94,8 @@
   }
 
   // 3. The debrief: up to four lessons, those that bit on this run first and marked in the
-  // margin, then "In real life", then Play again.
-  function debrief(parent, sc, result, house, onNext) {
+  // margin, then "In real life", then the way on: the next deal, or the year end.
+  function debrief(parent, sc, result, house, onNext, onward) {
     const s = screen(parent, 'debrief', 'debrief' + sc.id, onNext, true);
     el('h2', '', s.el, 'Debrief');
     const list = el('ol', '', s.el);
@@ -110,7 +110,7 @@
       el('h3', '', box, 'In real life');
       el('p', '', box, result.reallife);
     }
-    const again = el('button', 'again', s.el, 'Play again');
+    const again = el('button', 'again', s.el, onward || 'Continue');
     again.type = 'button';
     again.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -120,14 +120,15 @@
     return s;
   }
 
-  // Shows the screens in turn; onDone runs when the player leaves the debrief.
-  function show(parent, sc, result, house, onDone) {
+  // Shows the screens in turn; onDone runs when the player leaves the debrief, by a button
+  // labelled onward.
+  function show(parent, sc, result, house, onDone, onward) {
     const screens = [ledger, result.whatIfs.length ? whatIfs : null, debrief].filter(Boolean);
     let i = 0;
     let current = null;
     const next = function () {
       if (current) current.leave();
-      if (i < screens.length) current = screens[i++](parent, sc, result, house, next);
+      if (i < screens.length) current = screens[i++](parent, sc, result, house, next, onward);
       else {
         current = null;
         onDone();
