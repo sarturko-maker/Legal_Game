@@ -1,5 +1,6 @@
 // The director (SPEC 6.3): the only code that knows both the engine and the stage. For each
-// view: travel, set the scene, present (lead, prop, foot), wait, tell the engine, repeat.
+// view: travel, set the scene, present (lead, the runner if a telegram is brought, the prop,
+// foot), wait, tell the engine, repeat.
 (function () {
   const B2B = globalThis.B2B;
   // Where a cast member stands, by look: at the door of the place they belong to.
@@ -47,7 +48,7 @@
       const view = B2B.engine.view(state);
       hooks.onView(state, view);
       const t = token;
-      const steps = [travel, scene, event, runIn, present];
+      const steps = [travel, scene, event, lead, runIn, present];
       let i = 0;
       const next = function () {
         if (t !== token) return;
@@ -101,6 +102,14 @@
       next();
     }
 
+    // The lead comes first: it often says how long the answer took to come.
+    function lead(view, next) {
+      if (!view.lead || view.kind === 'choice') return next();
+      stage.scrim.classList.toggle('on', view.show !== 'note');
+      shown.push(B2B.props.strip(stage.props, view.lead, 'lead'));
+      later(next, 600);
+    }
+
     // A telegram away from the telegraph office is brought by the runner (SPEC 6.3).
     function runIn(view, next) {
       if (view.show !== 'telegram' || view.to || view.at === 'telegraph') return next();
@@ -123,7 +132,6 @@
         shown.push(current);
         return;
       }
-      if (view.lead) shown.push(B2B.props.strip(stage.props, view.lead, 'lead'));
       const ctx = {
         house: house,
         cast: cast,
@@ -133,11 +141,9 @@
         }
       };
       if (view.show === 'page') faceDown = view.face === 'down' || (faceDown && !ctx.turn);
-      later(function () {
-        current = B2B.props.show(stage.props, view, ctx, function () { done(view); });
-        shown.push(current);
-        next();
-      }, view.lead ? 600 : 0);
+      current = B2B.props.show(stage.props, view, ctx, function () { done(view); });
+      shown.push(current);
+      next();
     }
 
     // 5. Tell the engine. An outgoing telegram is handed to the runner first; a runner who

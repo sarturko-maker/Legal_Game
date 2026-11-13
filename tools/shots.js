@@ -34,7 +34,7 @@ const SHOTS = [
   { name: 'm4-ledger', run: J([], 'ledger'), wait: 1400 },
   { name: 'm4-choice', run: J([]), wait: 900 },
   { name: 'm4-train-note', run: J(['clone'], 'ship_clone'), wait: 1700 },
-  { name: 'm4-runner', run: J(['pack'], 'pack_reply'), wait: 380 },
+  { name: 'm4-runner', run: J(['pack'], 'pack_reply'), wait: 1000 },
   { name: 'm4-page-down', run: J(['pack'], 'their_terms'), wait: 900 },
   { name: 'm4-page-up', run: J(['pack', 'law'], 'law1'), wait: 1400 },
   { name: 'm4-storm-telegram', run: J(['pack', 'law'], 'redlines'), instant: true, wait: 900 },
@@ -190,7 +190,14 @@ async function main() {
       let ledger = null;
       for (let n = 0; n < 200; n += 1) {
         const at = await evaluate("(() => { const m = B2B.debug.mode(); const st = B2B.debug.state(); return { mode: m, node: st && st.nodeId, choice: !!document.querySelector('.panel:not([style*=absolute])'), ledger: (document.querySelector('.ending .result td.amount') || {}).textContent || null, resultShown: !!document.querySelector('.ending .result:not(.later)'), debrief: !!document.querySelector('.debrief') }; })()");
-        if (at.ledger && at.resultShown && !ledger) ledger = { node: at.node, text: at.ledger };
+        if (at.ledger && at.resultShown && !ledger) {
+          ledger = { node: at.node, text: at.ledger };
+          ledger.lines = await evaluate("Array.from(document.querySelectorAll('.ending tr:not(.tally):not(.result) td.amount')).map((td) => td.textContent)");
+        }
+        if (ledger && !ledger.whatIfs) {
+          const w = await evaluate("Array.from(document.querySelectorAll('.whatif')).map((p) => p.textContent)");
+          if (w.length) ledger.whatIfs = w;
+        }
         if (at.debrief) return { ledger, keysUsed };
         if (at.mode === 'deal' && at.choice) {
           const view = await evaluate('B2B.engine.view(B2B.debug.state()).options.map((o) => o.id)');
@@ -212,9 +219,15 @@ async function main() {
       for (const p of fixture.paths) {
         const run = await playPath(p.path, 60, true);
         const want = money(p.expect.net);
-        const ok = run.ledger && run.ledger.text === want && run.ledger.node === p.ending;
+        const lines = p.expect.lines.map((l) => money(l.amount));
+        // Every what-if line on screen names its amount, as the fixture has it.
+        const whatIfs = (run.ledger && run.ledger.whatIfs) || [];
+        const ok = run.ledger && run.ledger.text === want && run.ledger.node === p.ending &&
+          JSON.stringify(run.ledger.lines) === JSON.stringify(lines) &&
+          whatIfs.length === p.whatIfs.length &&
+          p.whatIfs.every((w, k) => whatIfs[k].includes(Math.abs(w.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')));
         if (!ok) errors.push('path ' + p.path.join(' ') + ': ledger ' + JSON.stringify(run.ledger) + ', expected ' + want + ' at ' + p.ending);
-        console.log('path    ' + (ok ? 'ok  ' : 'FAIL') + ' ' + p.path.join(' ').padEnd(20) + ' ' + p.ending.padEnd(12) + ' ledger ' + (run.ledger ? run.ledger.text : 'none') + ' (expected ' + want + '), ' + run.keysUsed + ' keys');
+        console.log('path    ' + (ok ? 'ok  ' : 'FAIL') + ' ' + p.path.join(' ').padEnd(20) + ' ' + p.ending.padEnd(12) + ' ledger ' + (run.ledger ? run.ledger.text : 'none') + ' (expected ' + want + '), lines ' + (run.ledger ? run.ledger.lines.join(' ') || 'none' : '?') + ', what-ifs ' + whatIfs.length + ', ' + run.keysUsed + ' keys');
       }
     }
 

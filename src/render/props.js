@@ -186,12 +186,13 @@
     if (view.face === 'down') {
       if (view.title) el('div', 'backing', back, view.title);
     } else {
+      if (view.title) el('h2', '', front, view.title);
+      paragraphs(front, view.text, view.who ? 'marked' : '');
+      // Whose pencil marks these are, written under them.
       if (view.who && ctx.cast[view.who]) {
         const c = ctx.cast[view.who];
         el('div', 'byline', front, c.name + (c.title ? ', ' + c.title : ''));
       }
-      if (view.title) el('h2', '', front, view.title);
-      paragraphs(front, view.text, view.who ? 'marked' : '');
       if (view.stamp) stamp(front, view.stamp, -7 - Number(turn) * 2).classList.add('landed');
     }
     const h = handle(prop, turn, onContinue, ctx.onComplete);
@@ -204,7 +205,7 @@
           card.classList.remove('turned');
         }
       });
-      timer = later(function () { h.complete(); }, 700);
+      timer = later(function () { h.complete(); }, 450);
     } else {
       h.complete();
     }
@@ -234,7 +235,7 @@
     const turn = tilt(view.headline || '');
     const h = handle(prop, turn, onContinue, ctx.onComplete);
     if (view.stamp) {
-      const s = stamp(prop, view.stamp, -9 + Number(turn) * 2);
+      const s = stamp(prop, view.stamp, -4 + Number(turn));
       s.classList.add('across');
       prop.classList.add('stamped');
       landing(s, h, 650);

@@ -179,7 +179,7 @@
 }
 .page .front { font: 30px/1.45 var(--text); }
 .page h2 { margin: 0 0 22px; font: 36px/1.25 var(--text); text-align: center; }
-.page .byline { margin: -20px 0 22px; font: italic 24px/1.3 var(--text); text-align: right; color: #4A3B30; }
+.page .byline { margin: 26px 0 0; font: italic 26px/1.2 var(--text); text-align: right; color: #5E5752; }
 .page .front p + p { margin-top: 20px; }
 /* A clause someone has marked: a pencil line in the margin. */
 .page p.marked { position: relative; }
@@ -224,7 +224,7 @@
   font: 150px/1 var(--display);
   letter-spacing: 2px;
 }
-.poster.stamped h2 { margin-bottom: 118px; }
+.poster.stamped h2 { margin-bottom: 178px; }
 .poster .inking { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .poster p + p { margin-top: 18px; }
 .poster .nail {
@@ -242,7 +242,7 @@
 /* A stamp across a poster is struck on a pasted slip, so it stays legible over the type. */
 .poster .stamp.across {
   left: 50%;
-  top: 318px;
+  top: 384px;
   transform-origin: center;
   translate: -50% 0;
   padding: 14px 30px 8px;
