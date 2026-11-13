@@ -27,8 +27,9 @@ const SIZES = [[1280, 720], [1920, 1080]];
 // Each shot: an expression to run in the page, optional keys to press after it, and how long
 // to wait before the picture. jump() replays a path and presents where it stops.
 const J = (path, until) => "B2B.debug.jump('s1', " + JSON.stringify(path) + (until ? ", '" + until + "'" : '') + ')';
+const J2 = (path, until) => J(path, until).replace("'s1'", "'s2'");
 const SHOTS = [
-  { name: 'm4-intro', run: "location.reload()", wait: 1800 },
+  { name: 'm4-intro', run: "B2B.debug.session(['s1'])", wait: 900 },
   { name: 'm4-telegram', run: J([], 'po'), instant: true, wait: 700 },
   { name: 'm4-say-clerk', run: J([], 'clerk'), wait: 900 },
   { name: 'm4-ledger', run: J([], 'ledger'), wait: 1400 },
@@ -56,7 +57,22 @@ const SHOTS = [
   { name: 'm4-mood-night', run: "B2B.debug.view('courthouse', 'night')", wait: 900 },
   { name: 'm4-mood-storm', run: "B2B.debug.view('law', 'storm')", wait: 900 },
   { name: 'm4-yard', run: "B2B.debug.view('yard', 'day')", wait: 900 },
-  { name: 'm4-bank', run: "(B2B.debug.view('law', 'day'), B2B.stage.camera(3900))", wait: 900 }
+  { name: 'm4-bank', run: "(B2B.debug.view('law', 'day'), B2B.stage.camera(3900))", wait: 900 },
+  { name: 'm5-title', run: "B2B.debug.screen('title')", wait: 900, both: true },
+  { name: 'm5-setup', run: "B2B.debug.screen('setup')", wait: 900, both: true },
+  { name: 'm5-intro', run: "B2B.debug.session(['s1', 's2'])", wait: 900, both: true },
+  { name: 'm5-card', run: J2(['law'], 'law_card'), wait: 900, both: true },
+  { name: 'm5-pick', run: J2(['law'], 'pick'), keys: ['1'], wait: 900, both: true },
+  { name: 'm5-week', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14'], 'silence'), instant: true, wait: 900, both: true },
+  { name: 'm5-yard-dade', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14', 'formal'], 'd_formal'), wait: 900, both: true },
+  { name: 'm5-train-in', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law'], 'delivered'), wait: 2200 },
+  { name: 'm5-end-settled', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law']), wait: 900, both: true },
+  { name: 'm5-ledger-count', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law']), instant: true, keys: [' '], wait: 1500, both: true },
+  { name: 'm5-whatif-s2', run: J2(['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law']), instant: true, keys: [' ', ' ', ' '], wait: 700, both: true },
+  { name: 'm5-debrief-bit', run: J2(['sign', 'quote12', 'verbal']), instant: true, keys: [' ', ' ', ' ', ' '], wait: 700, both: true },
+  { name: 'm5-yearend', drive: [['clone'], ['sign', 'quote12', 'verbal']], wait: 900, both: true },
+  { name: 'm5-menu', run: "B2B.debug.session(['s1', 's2'])", keys: ['Escape'], wait: 600, both: true },
+  { name: 'm5-lost-s2', run: J2(['refuse', 'walk']), wait: 900 }
 ];
 
 const KEYS = {
@@ -158,86 +174,154 @@ async function main() {
       await evaluate('document.fonts.ready.then(() => true)');
       await evaluate('B2B.debug.overlay(false)');
     };
+    await page('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+
+    // Plays deals with key presses only, from wherever the game stands (the title or an
+    // intro card) to the year end. steps[i] is the path for deal i; a pick step is an array.
+    // Returns, per deal, what the ledger said; and the year-end total.
+    const drive = async (steps, gap) => {
+      let keysUsed = 0;
+      const deals = [];
+      let i = 0;
+      let deal = -1;
+      let seen = null;
+      for (let n = 0; n < 600; n += 1) {
+        const at = await evaluate("(() => { const st = B2B.debug.state(); const live = (s) => document.querySelector(s + ':not([style*=absolute])'); return { mode: B2B.debug.mode(), node: st && st.nodeId, pick: !!live('.pickpanel'), choice: !!live('.panel:not(.pickpanel)'), ledger: (document.querySelector('.ending .result:not(.later) td.amount') || {}).textContent || null, debrief: !!live('.debrief'), total: (document.querySelector('.yearend .result td.amount') || {}).textContent || null }; })()");
+        if (at.mode === 'yearend') return { deals, keysUsed, total: at.total };
+        if (at.mode === 'intro' && seen !== 'intro') {
+          deal += 1;
+          i = 0;
+          deals[deal] = { ledger: null };
+        }
+        seen = at.mode;
+        const d = deals[deal];
+        if (at.ledger && d && !d.ledger) {
+          d.ledger = at.ledger;
+          d.node = at.node;
+          d.lines = await evaluate("Array.from(document.querySelectorAll('.ending tr:not(.tally):not(.result) td.amount')).map((td) => td.textContent)");
+          d.tally = await evaluate("Array.from(document.querySelectorAll('.ending tr.tally')).map((tr) => tr.textContent)");
+        }
+        if (d && !d.whatIfs) {
+          const w = await evaluate("Array.from(document.querySelectorAll('.whatif')).map((p) => p.textContent)");
+          if (w.length) d.whatIfs = w;
+        }
+        if (at.mode === 'deal' && (at.choice || at.pick)) {
+          const ids = await evaluate('B2B.engine.view(B2B.debug.state()).options.map((o) => o.id)');
+          const step = steps[deal][i];
+          i += 1;
+          for (const id of [].concat(step)) {
+            const index = ids.indexOf(id);
+            if (index < 0) throw new Error('No option ' + id + ' at ' + at.node);
+            await press(String(index + 1));
+            keysUsed += 1;
+          }
+          if (at.pick) {
+            await pause(80);
+            await press('Enter');
+            keysUsed += 1;
+          }
+        } else {
+          await press(at.debrief ? 'Enter' : ' ');
+          keysUsed += 1;
+        }
+        await pause(gap);
+      }
+      throw new Error('Never reached the year end: ' + JSON.stringify(steps));
+    };
+
+    // One deal from its intro card, checked against its fixture entry.
+    const check = async (scenario, entry, gap, instant) => {
+      await fresh();
+      if (instant) await evaluate('B2B.debug.instant = true');
+      await evaluate("B2B.debug.session(['" + scenario + "'])");
+      const run = await drive([entry.path], gap);
+      const d = run.deals[0];
+      const want = money(entry.expect.net);
+      const whatIfs = d.whatIfs || [];
+      const fail = [];
+      if (d.ledger !== want) fail.push('result ' + d.ledger + ', expected ' + want);
+      if (d.node !== entry.ending) fail.push('ending ' + d.node + ', expected ' + entry.ending);
+      if (entry.expect.lines && JSON.stringify(d.lines) !== JSON.stringify(entry.expect.lines.map((l) => money(l.amount)))) fail.push('lines ' + d.lines.join(' '));
+      if (whatIfs.length !== entry.whatIfs.length) fail.push(whatIfs.length + ' what-ifs, expected ' + entry.whatIfs.length);
+      entry.whatIfs.forEach((w, k) => {
+        if (w.amount && whatIfs[k] && !whatIfs[k].includes(money(w.amount).replace(/^[+−]/, ''))) fail.push('what-if ' + w.id + ': ' + whatIfs[k]);
+      });
+      return { d, run, want, fail };
+    };
+
     for (const [width, height] of SIZES) {
-      if (paths && !only.length) break;
+      if ((paths || keys) && !only.length) break;
       await page('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       for (const shot of SHOTS) {
         if (only.length && !only.includes(shot.name)) continue;
-        await fresh();
-        if (shot.instant) await evaluate('B2B.debug.instant = true');
-        if (shot.run !== 'location.reload()') await evaluate(shot.run);
-        if (shot.instant) await evaluate('B2B.debug.instant = false');
-        for (const key of shot.keys || []) {
-          await pause(120);
-          await press(key);
+        // Shots marked both are taken again with large text.
+        for (const large of shot.both ? [false, true] : [false]) {
+          await fresh();
+          if (large) await evaluate("B2B.session.options.large = true; B2B.stage.el.classList.add('large')");
+          if (shot.instant || shot.drive) await evaluate('B2B.debug.instant = true');
+          if (shot.drive) {
+            await evaluate("B2B.debug.session(['s1', 's2'])");
+            await drive(shot.drive, 50);
+          } else {
+            await evaluate(shot.run);
+          }
+          await evaluate('B2B.debug.instant = false');
+          for (const key of shot.keys || []) {
+            await pause(120);
+            await press(key);
+          }
+          await pause(shot.wait);
+          const { data } = await page('Page.captureScreenshot', { format: 'png' });
+          const file = path.join(OUT, shot.name + (large ? '-large' : '') + '-' + width + 'x' + height + '.png');
+          fs.writeFileSync(file, Buffer.from(data, 'base64'));
+          console.log('saved   ' + path.relative(ROOT, file));
         }
-        await pause(shot.wait);
-        const { data } = await page('Page.captureScreenshot', { format: 'png' });
-        const file = path.join(OUT, shot.name + '-' + width + 'x' + height + '.png');
-        fs.writeFileSync(file, Buffer.from(data, 'base64'));
-        console.log('saved   ' + path.relative(ROOT, file));
       }
     }
     await page('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
 
-    // Plays a path from the intro card with key presses only, to the debrief. Returns what
-    // the ledger said, the ending, and how many keys it took.
-    const playPath = async (steps, gap, instant) => {
-      await fresh();
-      if (instant) await evaluate('B2B.debug.instant = true');
-      let keysUsed = 0;
-      let i = 0;
-      let ledger = null;
-      for (let n = 0; n < 200; n += 1) {
-        const at = await evaluate("(() => { const m = B2B.debug.mode(); const st = B2B.debug.state(); return { mode: m, node: st && st.nodeId, choice: !!document.querySelector('.panel:not([style*=absolute])'), ledger: (document.querySelector('.ending .result td.amount') || {}).textContent || null, resultShown: !!document.querySelector('.ending .result:not(.later)'), debrief: !!document.querySelector('.debrief') }; })()");
-        if (at.ledger && at.resultShown && !ledger) {
-          ledger = { node: at.node, text: at.ledger };
-          ledger.lines = await evaluate("Array.from(document.querySelectorAll('.ending tr:not(.tally):not(.result) td.amount')).map((td) => td.textContent)");
-        }
-        if (ledger && !ledger.whatIfs) {
-          const w = await evaluate("Array.from(document.querySelectorAll('.whatif')).map((p) => p.textContent)");
-          if (w.length) ledger.whatIfs = w;
-        }
-        if (at.debrief) return { ledger, keysUsed };
-        if (at.mode === 'deal' && at.choice) {
-          const view = await evaluate('B2B.engine.view(B2B.debug.state()).options.map((o) => o.id)');
-          const index = view.indexOf(steps[i]);
-          if (index < 0) throw new Error('No option ' + steps[i] + ' at ' + at.node);
-          i += 1;
-          await press(String(index + 1));
-        } else {
-          await press(' ');
-        }
-        keysUsed += 1;
-        await pause(gap);
-      }
-      throw new Error('Path ' + steps.join(' ') + ' never reached the debrief');
-    };
-
+    const label = (path) => path.map((s) => [].concat(s).join(',')).join(' ');
     if (paths) {
-      const fixture = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/scenarios/fixtures/s1-paths.json'), 'utf8'));
-      for (const p of fixture.paths) {
-        const run = await playPath(p.path, 60, true);
-        const want = money(p.expect.net);
-        const lines = p.expect.lines.map((l) => money(l.amount));
-        // Every what-if line on screen names its amount, as the fixture has it.
-        const whatIfs = (run.ledger && run.ledger.whatIfs) || [];
-        const ok = run.ledger && run.ledger.text === want && run.ledger.node === p.ending &&
-          JSON.stringify(run.ledger.lines) === JSON.stringify(lines) &&
-          whatIfs.length === p.whatIfs.length &&
-          p.whatIfs.every((w, k) => whatIfs[k].includes(Math.abs(w.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')));
-        if (!ok) errors.push('path ' + p.path.join(' ') + ': ledger ' + JSON.stringify(run.ledger) + ', expected ' + want + ' at ' + p.ending);
-        console.log('path    ' + (ok ? 'ok  ' : 'FAIL') + ' ' + p.path.join(' ').padEnd(20) + ' ' + p.ending.padEnd(12) + ' ledger ' + (run.ledger ? run.ledger.text : 'none') + ' (expected ' + want + '), lines ' + (run.ledger ? run.ledger.lines.join(' ') || 'none' : '?') + ', what-ifs ' + whatIfs.length + ', ' + run.keysUsed + ' keys');
+      const fixtures = {
+        s1: JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/scenarios/fixtures/s1-paths.json'), 'utf8')).paths,
+        s2: JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/scenarios/fixtures/s2-paths.json'), 'utf8')).paths
+      };
+      // Every s1 path, and the six s2 paths PLAN M5 names.
+      const S2 = ['law cap,sole ask quote14 formal law', 'sign quote12 verbal', 'law cap,grace quote12 wire',
+        'refuse walk', 'sign ask quote14 risk', 'refuse law sole,grace ask quote12 formal standfirm'];
+      const runs = fixtures.s1.map((e) => ['s1', e]).concat(S2.map((name) => {
+        const e = fixtures.s2.find((x) => label(x.path) === name);
+        if (!e) throw new Error('No s2 fixture path ' + name);
+        return ['s2', e];
+      }));
+      for (const [scenario, entry] of runs) {
+        const r = await check(scenario, entry, 50, true);
+        if (r.fail.length) errors.push(scenario + ' ' + label(entry.path) + ': ' + r.fail.join('; '));
+        console.log('path    ' + (r.fail.length ? 'FAIL' : 'ok  ') + ' ' + scenario + ' ' + label(entry.path).padEnd(50) + ' ' + r.d.node.padEnd(12) + ' ' + r.d.ledger + (r.d.tally.length ? ' (' + r.d.tally.length + ' count lines)' : '') + ', what-ifs ' + (r.d.whatIfs || []).length + ', ' + r.run.keysUsed + ' keys');
       }
+      // A two-deal session from the title screen, checked at the year end.
+      await fresh();
+      await evaluate('B2B.debug.instant = true');
+      await evaluate("B2B.debug.screen('title')");
+      await pause(100);
+      await press('Enter');
+      const session = await drive([['clone'], ['sign', 'quote12', 'verbal']], 50);
+      const total = money(-19998500 - 1740000);
+      const ok = session.total === total;
+      if (!ok) errors.push('session total ' + session.total + ', expected ' + total);
+      console.log('session ' + (ok ? 'ok  ' : 'FAIL') + ' Play, s1 clone, s2 sign quote12 verbal: year end ' + session.total + ' (expected ' + total + '), ' + session.keysUsed + ' keys');
     }
 
     if (keys) {
-      // One path at full speed, keyboard only: the longest one, through both visits to legal.
+      // A full session at full speed, keyboard only, through the longest paths.
+      await fresh();
       const t0 = Date.now();
-      const run = await playPath(['pack', 'law', 'law'], 450);
-      const ok = run.ledger && run.ledger.text === money(26500);
-      if (!ok) errors.push('keyboard run: ledger ' + JSON.stringify(run.ledger));
-      console.log('keys    ' + (ok ? 'ok  ' : 'FAIL') + ' pack law law at full speed, keyboard only: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, ledger ' + (run.ledger ? run.ledger.text : 'none'));
+      await press('Enter');
+      const run = await drive([['pack', 'law', 'law'], ['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law']], 450);
+      const total = money(26500 + 180000);
+      const ok = run.total === total;
+      if (!ok) errors.push('keyboard session: ' + run.total);
+      console.log('keys    ' + (ok ? 'ok  ' : 'FAIL') + ' a full session at full speed, keyboard only: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, year end ' + run.total + ' (expected ' + total + ')');
     }
 
     if (keys) {
@@ -251,6 +335,7 @@ async function main() {
       const centre = (selector) => evaluate("(() => { const r = document.querySelector('" + selector + "').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()");
       const facts = () => evaluate("({ mode: B2B.debug.mode(), node: (B2B.debug.state() || {}).nodeId, typing: document.querySelectorAll('.telegram .later').length, walking: !!document.querySelector('.figure.player.walking'), intro: !!document.querySelector('.intro:not([style*=absolute])'), menu: !document.querySelector('.menu').hidden })");
       await fresh();
+      await evaluate("B2B.debug.session(['s1'])");
       await click(...await centre('.intro'));
       await pause(1200);
       await click(...await centre('.telegram .message'));
@@ -274,13 +359,16 @@ async function main() {
     }
 
     if (keys) {
-      // Reduced motion: the same game with cuts and fades only (SPEC 13).
+      // A full session with reduced motion: cuts and fades only (SPEC 13).
       await page('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+      await fresh();
       const t0 = Date.now();
-      const run = await playPath(['pack', 'law', 'law'], 300);
-      const ok = run.ledger && run.ledger.text === money(26500);
-      if (!ok) errors.push('reduced motion run: ' + JSON.stringify(run.ledger));
-      console.log('reduce  ' + (ok ? 'ok  ' : 'FAIL') + ' pack law law with reduced motion: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, ledger ' + (run.ledger ? run.ledger.text : 'none'));
+      await press('Enter');
+      const run = await drive([['clone'], ['refuse', 'walk']], 300);
+      const total = money(-19998500);
+      const ok = run.total === total;
+      if (!ok) errors.push('reduced motion session: ' + run.total);
+      console.log('reduce  ' + (ok ? 'ok  ' : 'FAIL') + ' a full session with reduced motion: ' + run.keysUsed + ' keys, ' + Math.round((Date.now() - t0) / 1000) + ' s, year end ' + run.total + ' (expected ' + total + ')');
       await page('Emulation.setEmulatedMedia', { features: [] });
     }
 

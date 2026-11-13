@@ -104,7 +104,7 @@
 
     // The lead comes first: it often says how long the answer took to come.
     function lead(view, next) {
-      if (!view.lead || view.kind === 'choice') return next();
+      if (!view.lead || view.kind === 'choice' || view.kind === 'pick') return next();
       stage.scrim.classList.toggle('on', view.show !== 'note');
       shown.push(B2B.props.strip(stage.props, view.lead, 'lead'));
       later(next, 600);
@@ -127,6 +127,16 @@
           if (t !== token) return;
           clearProps();
           state = B2B.engine.choose(state, id);
+          show();
+        });
+        shown.push(current);
+        return;
+      }
+      if (view.kind === 'pick') {
+        current = B2B.props.pick(stage.props, view, { cast: cast }, function (ids) {
+          if (t !== token) return;
+          clearProps();
+          state = B2B.engine.pick(state, ids);
           show();
         });
         shown.push(current);

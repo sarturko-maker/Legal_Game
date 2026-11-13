@@ -52,6 +52,17 @@
       '<circle cx="-13" cy="-170" r="7" fill="#2B211C"/>' +
       '<g transform="rotate(-8 18 -110)"><rect x="6" y="-128" width="26" height="36" fill="#3A2420"/><rect x="6" y="-126" width="3" height="32" fill="#D9C7A3"/></g>' +
       '<g class="arm a2"><path fill="#33271F" d="M12 -138 L24 -138 L26 -86 L14 -86 Z"/></g>',
+    foreman:
+      '<g class="leg l1"><path fill="#241B16" d="M-13 -78 L2 -78 L0 -4 L8 -4 L9 4 L-15 4 L-12 -4 Z"/></g>' +
+      '<g class="leg l2"><path fill="#2B211C" d="M-5 -78 L12 -78 L11 -4 L18 -4 L19 4 L-4 4 L-2 -4 Z"/></g>' +
+      '<g class="arm a1"><path fill="#241B16" d="M-27 -136 L-14 -136 L-16 -84 L-27 -84 Z"/></g>' +
+      '<path fill="#2B211C" d="M-24 -142 Q0 -152 24 -142 L26 -74 Q0 -68 -26 -74 Z"/>' +
+      '<rect x="-6" y="-152" width="12" height="11" fill="#2B211C"/>' +
+      '<ellipse cx="0" cy="-162" rx="13" ry="13" fill="#2B211C"/>' +
+      '<path fill="#1F1712" d="M-22 -168 Q0 -173 22 -168 L22 -165 Q0 -169 -22 -165 Z"/>' +
+      '<path fill="#1F1712" d="M-13 -167 Q-13 -186 0 -186 Q13 -186 13 -167 Z"/>' +
+      '<g transform="rotate(-24 26 -104)"><rect x="18" y="-140" width="12" height="62" rx="6" fill="#D9C7A3"/><ellipse cx="24" cy="-140" rx="6" ry="3" fill="#B8A57F"/></g>' +
+      '<g class="arm a2"><path fill="#33271F" d="M14 -136 L26 -136 L26 -86 L16 -86 Z"/></g>',
     runner:
       '<g transform="rotate(14 0 -80) scale(.8) translate(0 22)">' +
       '<g class="leg l1"><path fill="#241B16" d="M-10 -78 L2 -78 L-1 -4 L6 -4 L8 4 L-12 4 L-10 -4 Z"/></g>' +
@@ -267,8 +278,8 @@
     f.trip = trip;
     if (!distance || (B2B.debug && B2B.debug.instant)) {
       finish();
-    } else if (stage.reduce) {
-      // Reduced motion: a short fade cut instead of a walk (SPEC 6.3, 13).
+    } else if (stage.reduce || stage.walking === false) {
+      // Walking off, or reduced motion: a short fade cut instead of a walk (SPEC 6.3, 13).
       stage.cover.classList.add('on');
       setTimeout(function () {
         finish();

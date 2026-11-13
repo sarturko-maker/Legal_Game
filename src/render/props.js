@@ -5,10 +5,18 @@
   const B2B = globalThis.B2B;
   const TYPE_RATE = 45;
 
+  // Typographic quotes for the text face, which draws a straight " as a closing quote. Only
+  // the shape of the marks changes, never the words. Telegrams keep their typewriter marks.
+  function typeset(text) {
+    return String(text)
+      .replace(/(^|[\s(\[\u2014])"/g, '$1\u201C').replace(/"/g, '\u201D')
+      .replace(/(^|[\s(\[\u2014])'/g, '$1\u2018').replace(/'/g, '\u2019');
+  }
+
   function el(tag, cls, parent, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
+    if (text != null) e.textContent = typeset(text);
     if (parent) parent.appendChild(e);
     return e;
   }
@@ -139,7 +147,11 @@
     const chars = [];
     view.text.join(' ').split(/(\bSTOP\b)/i).forEach(function (part) {
       const holder = /^STOP$/i.test(part) ? el('span', 'stop', message) : message;
-      Array.from(part).forEach(function (c) { chars.push(el('span', 'later', holder, c)); });
+      Array.from(part).forEach(function (c) {
+        const span = el('span', 'later', holder);
+        span.textContent = c;
+        chars.push(span);
+      });
     });
     const s = stamp(prop, view.stamp || (view.to ? 'SENT' : 'RECEIVED'), -6 - Number(turn) * 3);
     el('small', '', s, (ctx.house.town || '').toUpperCase());
@@ -284,6 +296,17 @@
     return h;
   }
 
+  // A stiff printed card: the title in display type, the numbered points, small print.
+  function card(parent, view, ctx, onContinue) {
+    const prop = el('div', 'prop printcard', parent);
+    if (view.title) el('h2', '', prop, view.title);
+    paragraphs(el('div', 'points', prop), view.text);
+    if (view.small) el('p', 'small', prop, view.small);
+    const h = handle(prop, tilt(view.title || view.text.join(' ')), onContinue, ctx.onComplete);
+    h.complete();
+    return h;
+  }
+
   // Lead and foot: a line of narration on its own strip, above or below the prop.
   function strip(parent, text, cls, before) {
     const s = el('div', 'strip ' + cls);
@@ -319,16 +342,76 @@
     return { el: prop, key: pick, leave: function () { leave(prop); } };
   }
 
-  const SHOWS = { telegram: telegram, page: page, ledger: ledger, poster: poster, paper: paper, say: say, note: note };
+  // The pick panel: choose exactly `count` of the options. A ticket toggles when clicked or
+  // when its number is pressed; a picked ticket is punched, with a hole and a tick. Confirm
+  // works only at the right count (SPEC 6.4, ART 9).
+  function pick(parent, view, ctx, onPick) {
+    const prop = el('div', 'prop panel pickpanel', parent);
+    const head = el('div', 'prompt', prop);
+    const c = ctx.cast[view.who];
+    if (c && c.look) el('span', 'oval', head).innerHTML = B2B.figures.portrait(c.look);
+    el('span', '', head, view.prompt);
+    if (view.hint) el('div', 'hint', prop, view.hint);
+    const chosen = [];
+    let done = false;
+    const tickets = view.options.map(function (o, i) {
+      const t = el('button', 'ticket', prop);
+      t.type = 'button';
+      el('span', 'key', t, String(i + 1));
+      const words = el('span', '', t);
+      el('span', 'label', words, o.label);
+      if (o.text) el('span', 'note', words, o.text);
+      t.addEventListener('click', function () { toggle(i); });
+      return t;
+    });
+    const confirm = el('button', 'confirm', prop);
+    confirm.type = 'button';
+    const update = function () {
+      tickets.forEach(function (t, i) {
+        const on = chosen.indexOf(i) >= 0;
+        t.classList.toggle('punched', on);
+        t.setAttribute('aria-pressed', String(on));
+      });
+      confirm.disabled = chosen.length !== view.count;
+      confirm.textContent = 'Confirm ' + chosen.length + ' of ' + view.count;
+      el('kbd', '', confirm, 'Enter');
+    };
+    const toggle = function (i) {
+      if (done || !tickets[i]) return;
+      const k = chosen.indexOf(i);
+      if (k >= 0) chosen.splice(k, 1);
+      else if (chosen.length < view.count) chosen.push(i);
+      update();
+    };
+    const press = function () {
+      if (done || chosen.length !== view.count) return;
+      done = true;
+      confirm.classList.add('pressed');
+      later(function () {
+        onPick(view.options.filter(function (o, i) { return chosen.indexOf(i) >= 0; }).map(function (o) { return o.id; }));
+      }, 300);
+    };
+    confirm.addEventListener('click', function (e) {
+      e.stopPropagation();
+      press();
+    });
+    update();
+    rise(prop, 0);
+    return { el: prop, key: toggle, press: press, leave: function () { leave(prop); } };
+  }
+
+  const SHOWS = { telegram: telegram, page: page, ledger: ledger, card: card, poster: poster, paper: paper, say: say, note: note };
 
   B2B.props = {
     // Builds the prop for a view. ctx is { house, cast, turn, onComplete }: turn means a face-up
     // page arrives face down and turns over; onComplete runs once the prop has finished.
     show: function (parent, view, ctx, onContinue) { return SHOWS[view.show](parent, view, ctx, onContinue); },
     choice: choice,
+    pick: pick,
     strip: strip,
     stamp: stamp,
     tilt: tilt,
+    typeset: typeset,
     rise: rise,
     leave: leave,
     continueButton: continueButton
