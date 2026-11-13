@@ -102,6 +102,39 @@ module.exports = {
     throwsNaming(() => B2B.engine.replay(s1(), B2B.packs.house(), ['clone', 'law']), ['s1', 'end_lawsuit', 'left over']);
   },
 
+  'a pick takes exactly count distinct known options, and records them in option order'() {
+    const s2 = B2B.packs.scenarios().find((sc) => sc.id === 's2');
+    let state = B2B.engine.start(s2, B2B.packs.house());
+    while (state.nodeId !== 'pick') {
+      const kind = s2.nodes[state.nodeId].kind;
+      state = kind === 'beat' ? B2B.engine.advance(state) : B2B.engine.choose(state, 'law');
+    }
+    throwsNaming(() => B2B.engine.pick(state, ['cap']), ['s2', 'pick', 'exactly 2']);
+    throwsNaming(() => B2B.engine.pick(state, ['cap', 'cap']), ['s2', 'pick', 'twice']);
+    throwsNaming(() => B2B.engine.pick(state, ['cap', 'moon']), ['s2', 'pick', 'moon']);
+    throwsNaming(() => B2B.engine.choose(state, 'cap'), ['s2', 'pick', 'choose']);
+    const after = B2B.engine.pick(state, ['sole', 'cap']);
+    assert.deepStrictEqual(after.path[after.path.length - 1], ['cap', 'sole']);
+    assert.strictEqual(after.vars.cap && after.vars.sole && !after.vars.grace, true);
+  },
+
+  'the week counter stays until changed, and can be a placeholder'() {
+    const s2 = B2B.packs.scenarios().find((sc) => sc.id === 's2');
+    const end = B2B.engine.replay(s2, B2B.packs.house(), ['sign', 'quote12', 'verbal']);
+    assert.strictEqual(B2B.engine.view(end).week, 23);
+    assert.strictEqual(B2B.engine.view(B2B.engine.start(s2, B2B.packs.house())).week, null);
+  },
+
+  'lessons that bit come first, and none bites on a lost deal'() {
+    const s2 = B2B.packs.scenarios().find((sc) => sc.id === 's2');
+    const worst = B2B.engine.result(B2B.engine.replay(s2, B2B.packs.house(), ['sign', 'quote12', 'verbal']));
+    assert.deepStrictEqual(worst.lessons.map((l) => l.bit), [true, true, true, false]);
+    assert.ok(worst.lessons[0].text.startsWith('You rarely get'));
+    const lost = B2B.engine.result(B2B.engine.replay(s2, B2B.packs.house(), ['refuse', 'walk']));
+    assert.ok(lost.lessons.every((l) => !l.bit) && lost.lessons.length === 4);
+    assert.ok(lost.lessons[0].text.startsWith('You rarely get'));
+  },
+
   'mood stays until a node changes it'() {
     const state = B2B.engine.replay(s1(), B2B.packs.house(), ['pack', 'law', 'cave']);
     assert.strictEqual(B2B.engine.view(state).mood, 'night');

@@ -14,6 +14,8 @@
     .stamp { border: 2px solid; display: inline-block; padding: 0 .4em; font-weight: bold; }
     .note { font-size: 15px; color: #5E4B3C; }
     .chosen { font-weight: bold; }
+    .week { font: bold 15px monospace; }
+    label.pick { display: block; margin: .4em 0; }
     .problems { color: #8B1E1E; }
     button { display: block; margin: .4em 0; padding: .3em .6em; font: inherit; text-align: left; }
     table { border-collapse: collapse; }
@@ -81,8 +83,9 @@
       function step(sc, state) {
         const v = B2B.engine.view(state);
         const box = add(out, 'section');
-        add(box, 'p', '[' + state.nodeId + '] ' + [v.kind, v.at, v.show, v.mood, v.week == null ? null : 'week ' + v.week,
-          v.face && 'face ' + v.face, v.event].filter(Boolean).join(' · ') + '   path: ' + (state.path.join(' ') || '-'), 'meta');
+        add(box, 'p', '[' + state.nodeId + '] ' + [v.kind, v.at, v.show, v.mood, v.face && 'face ' + v.face, v.event]
+          .filter(Boolean).join(' · ') + '   path: ' + (state.path.join(' ') || '-'), 'meta');
+        if (v.week != null) add(box, 'p', 'Week ' + v.week, 'week');
         if (v.lead) add(box, 'p', v.lead, 'lead');
         if (v.who) add(box, 'p', (cast[v.who] ? cast[v.who].name : v.who) + ':');
         if (v.from) add(box, 'p', 'From: ' + v.from);
@@ -112,6 +115,28 @@
             });
             if (i === 0) first = b;
           });
+        } else if (v.kind === 'pick') {
+          // Tick exactly `count` boxes, then confirm. Nothing is decided until Confirm.
+          const boxes = v.options.map(function (o) {
+            const label = add(controls, 'label', null, 'pick');
+            const tick = add(label, 'input');
+            tick.type = 'checkbox';
+            tick.value = o.id;
+            add(label, 'strong', ' ' + o.label);
+            if (o.text) add(label, 'span', '  ' + o.text);
+            return tick;
+          });
+          const confirm = button(controls, 'Confirm ' + v.count, function () {
+            const ids = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+            done('> ' + v.options.filter(function (o) { return ids.indexOf(o.id) >= 0; }).map(function (o) { return o.label; }).join(', '));
+            step(sc, B2B.engine.pick(state, ids));
+          });
+          const update = function () {
+            confirm.disabled = boxes.filter(function (b) { return b.checked; }).length !== v.count;
+          };
+          boxes.forEach(function (b) { b.addEventListener('change', update); });
+          update();
+          first = boxes[0];
         } else if (v.kind === 'ending') {
           first = button(controls, 'See the ledger', function () { done(); ledger(sc, state); });
         }
@@ -145,6 +170,7 @@
         add(box, 'h3', 'What it was worth');
         r.whatIfs.forEach(function (w) { add(box, 'p', w.text); });
         if (!r.whatIfs.length) add(box, 'p', '[no what-if line on this ending]', 'note');
+        if (r.whatIfNote) add(box, 'p', r.whatIfNote, 'note');
 
         add(box, 'h3', 'Lessons');
         const list = add(box, 'ol');

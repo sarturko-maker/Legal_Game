@@ -79,6 +79,7 @@ function main(argv) {
   say('-- What it was worth --');
   r.whatIfs.forEach((w) => say('  ' + w.text));
   if (!r.whatIfs.length) say('  (nothing shown)');
+  if (r.whatIfNote) say('  (small print) ' + r.whatIfNote);
   say();
   say('-- Lessons --');
   r.lessons.forEach((l, i) => {
