@@ -231,8 +231,6 @@ body > h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alive, .figure .body, .stamp.landed { animation: none; }
-  .stamp.landed { opacity: 1; }
-  .prop { transition: opacity .2s; }
+  .alive, .figure .body { animation: none; }
   .sky > div, .world, .scrim, .hud .place { transition: none; }
 }

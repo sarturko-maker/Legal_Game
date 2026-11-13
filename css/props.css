@@ -160,3 +160,9 @@
   font: 44px/1 var(--text);
   color: var(--red);
 }
+
+/* Reduced motion: props fade where they stand, and stamps appear without landing (SPEC 13). */
+@media (prefers-reduced-motion: reduce) {
+  .prop { transition: opacity .2s; }
+  .stamp.landed { animation: none; opacity: 1; transform: rotate(var(--turn, -8deg)); }
+}
