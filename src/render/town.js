@@ -518,7 +518,6 @@
     PLACES: PLACES,
     sign: signFor,
     SPAN: SPAN,
-    GROUND: GROUND,
     // One SVG string per layer, for a mood.
     draw: function (mood, house) {
       return { l1: sky(mood), l2: mesas(mood), l3: hills(), l4: backRow(), l5: street(house, mood), l6: foreground() };

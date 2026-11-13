@@ -402,7 +402,7 @@
   font: 30px/1.2 var(--text);
   cursor: pointer;
 }
-.confirm kbd { font: 18px/1 var(--type); margin-left: 12px; opacity: .7; }
+.confirm kbd { font: 18px/1 var(--type); margin-left: 12px; }
 .confirm:disabled { background: var(--paper-edge); color: #4A3B30; cursor: default; }
 .confirm:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
 .confirm.pressed { transform: translateY(2px); }
@@ -511,7 +511,7 @@
   opacity: .8;
 }
 .menu-button:focus-visible, .menu button:focus-visible { outline: 5px solid var(--ochre); outline-offset: 4px; }
-.menu-button kbd { font: 16px/1 var(--type); margin-left: 8px; opacity: .7; }
+.menu-button kbd { font: 16px/1 var(--type); margin-left: 8px; }
 .menu {
   position: absolute;
   right: 40px;

@@ -88,7 +88,8 @@ const SHOTS = [
 const KEYS = {
   ' ': { code: 'Space', text: ' ', vk: 32 },
   Enter: { code: 'Enter', text: '\r', vk: 13 },
-  Escape: { code: 'Escape', vk: 27 }
+  Escape: { code: 'Escape', vk: 27 },
+  Tab: { code: 'Tab', vk: 9 }
 };
 for (let d = 1; d <= 9; d += 1) KEYS[String(d)] = { code: 'Digit' + d, text: String(d), vk: 48 + d };
 
@@ -144,11 +145,44 @@ function connect(browser, profile) {
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// SPEC 13: the contrast of every piece of visible text against the paper or panel behind
+// it, its opacity included. Text straight over the scene, with no panel, is listed apart.
+const CONTRAST = `(() => {
+  const parse = (c) => { const m = /rgba?\\(([^)]+)\\)/.exec(c); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const ratio = (a, b) => { const x = Math.max(lum(a), lum(b)); const y = Math.min(lum(a), lum(b)); return (x + 0.05) / (y + 0.05); };
+  const behind = (el) => { for (let e = el; e && e !== document.body; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c[3] > 0.9) return c; } return null; };
+  const out = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const text = n.textContent.trim();
+    const el = n.parentElement;
+    if (!text || !el.closest('.props, .hud, .menu, .menu-button') || el.closest('[style*=absolute], [hidden], .debug')) continue;
+    if (!el.getBoundingClientRect().width) continue;
+    let alpha = 1;
+    let moving = false;
+    for (let e = el; e; e = e.parentElement) {
+      alpha *= Number(getComputedStyle(e).opacity);
+      if (e.getAnimations && e.getAnimations().some((a) => a.playState === 'running')) moving = true;
+    }
+    if (moving) continue;
+    if (alpha < 0.05) continue;
+    const fg = parse(getComputedStyle(el).color);
+    const bg = behind(el);
+    const what = (el.getAttribute('class') || el.tagName.toLowerCase()) + ': ' + text.slice(0, 32);
+    if (!bg) { out.push({ what, ratio: null }); continue; }
+    const a = fg[3] * alpha;
+    out.push({ what, ratio: Math.round(ratio([0, 1, 2].map((i) => fg[i] * a + bg[i] * (1 - a)), bg) * 100) / 100 });
+  }
+  return out;
+})()`;
+
 async function main() {
   const args = process.argv.slice(2);
   const frames = args.includes('--frames');
   const keys = args.includes('--keys');
   const paths = args.includes('--paths');
+  const audit = args.includes('--audit');
   const only = args.filter((a) => !a.startsWith('--'));
   // --private: the example private pack, copied to packs/private.js for this run only
   // (PLAN M6). An existing packs/private.js is somebody's real pack: never touch it.
@@ -280,8 +314,89 @@ async function main() {
       console.log('private ' + (ok ? 'ok  ' : 'FAIL') + ' packs ' + p.packs.join(', ') + '; offered ' + p.offered.join(', ') + '; s1 starts as "' + p.intro + '"');
     }
 
+    if (audit) {
+      // SPEC 13, item by item. 1: contrast on every screen the shots visit.
+      await page('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+      let lowest = 99;
+      let texts = 0;
+      const low = new Set();
+      const bare = new Set();
+      for (const shot of SHOTS) {
+        if (shot.private || (only.length && !only.includes(shot.name))) continue;
+        await fresh();
+        if (shot.instant || shot.drive) await evaluate('B2B.debug.instant = true');
+        if (shot.drive) {
+          await evaluate("B2B.debug.session(['s1', 's2'], " + JSON.stringify(shot.options || {}) + ')');
+          await drive(shot.drive, 50);
+        } else {
+          await evaluate(shot.run);
+        }
+        await evaluate('B2B.debug.instant = false');
+        for (const key of shot.keys || []) {
+          await pause(120);
+          await press(key);
+        }
+        await pause(Math.max(shot.wait, 1500));
+        for (const t of await evaluate(CONTRAST)) {
+          texts += 1;
+          if (t.ratio === null) bare.add(t.what);
+          else {
+            lowest = Math.min(lowest, t.ratio);
+            if (t.ratio < 4.5) low.add(shot.name + '  ' + t.what + '  ' + t.ratio);
+          }
+        }
+      }
+      low.forEach((l) => errors.push('contrast below 4.5: ' + l));
+      console.log('contrast ' + (low.size ? 'FAIL' : 'ok  ') + ' ' + texts + ' pieces of text on ' + SHOTS.filter((x) => !x.private).length + ' screens; lowest ' + lowest + (low.size ? '; ' + low.size + ' below 4.5' : ''));
+      bare.forEach((b) => console.log('         no panel behind: ' + b));
+
+      // 2: focus is always visible. Tab through the set-up, a choice, the pick, the menu.
+      const unseen = [];
+      let stops = 0;
+      const tabThrough = async (label, n) => {
+        for (let i = 0; i < n; i += 1) {
+          await press('Tab');
+          await pause(60);
+          const f = await evaluate("(() => { const e = document.activeElement; if (!e || e === document.body) return null; const cs = getComputedStyle(e); return { what: (e.getAttribute('class') || e.tagName) + ' ' + (e.textContent || e.type || '').trim().slice(0, 24), shown: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 }; })()");
+          if (!f) continue;
+          stops += 1;
+          if (!f.shown) unseen.push(label + ': ' + f.what);
+        }
+      };
+      await fresh();
+      await evaluate("B2B.debug.screen('title')");
+      await pause(500);
+      await tabThrough('title', 3);
+      await evaluate("B2B.debug.screen('setup')");
+      await pause(500);
+      await tabThrough('set up', 10);
+      await evaluate(J(['pack'], 'c2'));
+      await pause(900);
+      await tabThrough('choice', 4);
+      await evaluate(J2(['law'], 'pick'));
+      await pause(900);
+      await tabThrough('pick', 5);
+      await press('Escape');
+      await pause(300);
+      await tabThrough('menu', 5);
+      unseen.forEach((u) => errors.push('focus not visible: ' + u));
+      console.log('focus   ' + (unseen.length ? 'FAIL' : 'ok  ') + ' ' + stops + ' Tab stops on the title, set-up, a choice, the pick and the menu; ' + (unseen.length ? unseen.length + ' without a visible focus' : 'every one shows its focus'));
+
+      // 3: with reduced motion, nothing slides, walks or loops: cuts and fades only.
+      await page('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+      await fresh();
+      await evaluate("window.moves = new Set(); addEventListener('transitionrun', (e) => { if (!/opacity|color|visibility/.test(e.propertyName)) moves.add('transition ' + e.propertyName + ' on ' + e.target.getAttribute('class')); }, true); addEventListener('animationstart', (e) => moves.add('animation ' + e.animationName + ' on ' + e.target.getAttribute('class')), true); true");
+      await press('Enter');
+      await drive([['clone'], ['law', ['cap', 'sole'], 'ask', 'quote14', 'formal', 'law']], 300);
+      const running = await evaluate("document.getAnimations().filter((a) => a.playState === 'running').map((a) => (a.animationName || a.transitionProperty) + ' on ' + a.effect.target.getAttribute('class'))");
+      const moves = (await evaluate('Array.from(moves)')).concat(running);
+      moves.forEach((m) => errors.push('moves with reduced motion: ' + m));
+      console.log('motion  ' + (moves.length ? 'FAIL' : 'ok  ') + ' a full session with reduced motion: ' + (moves.length ? moves.length + ' things moved' : 'nothing slid, walked or looped'));
+      await page('Emulation.setEmulatedMedia', { features: [] });
+    }
+
     for (const [width, height] of SIZES) {
-      if ((paths || keys) && !only.length) break;
+      if ((paths || keys || audit) && !only.length) break;
       await page('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       for (const shot of SHOTS) {
         if (only.length && !only.includes(shot.name)) continue;
@@ -421,6 +536,29 @@ async function main() {
       await fresh();
       const f = await evaluate('B2B.debug.walkFrameTime()');
       console.log('walk    ' + f.frames + ' frames, average ' + f.averageMs + ' ms, worst ' + f.worstMs + ' ms (headless, 1920x1080)');
+      // Standing still: what the moving scenery costs on its own, in a calm scene and in the
+      // busiest one, and the floor with nothing moving at all.
+      const idle = (place, mood) => "(B2B.debug.view('" + place + "', '" + mood + "'), new Promise((resolve) => { const t = []; let last = null; const tick = (now) => { if (last !== null) t.push(now - last); last = now; if (t.length < 120) requestAnimationFrame(tick); else resolve(Math.round(t.reduce((a, b) => a + b, 0) / t.length * 100) / 100); }; setTimeout(() => requestAnimationFrame(tick), 600); }))";
+      await fresh();
+      const calm = await evaluate(idle('telegraph', 'day'));
+      await fresh();
+      const storm = await evaluate(idle('yard', 'storm'));
+      await page('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+      await fresh();
+      const still = await evaluate(idle('yard', 'storm'));
+      await page('Emulation.setEmulatedMedia', { features: [] });
+      console.log('idle    standing still: ' + calm + ' ms a frame at the telegraph office by day, ' + storm + ' ms at the yard in a storm, ' + still + ' ms with nothing moving');
+      // Time to first screen: from navigation to the title card in place, fonts loaded.
+      await page('Page.navigate', { url: url.replace('?debug=1', '') });
+      let first = null;
+      for (let i = 0; i < 300 && first === null; i += 1) {
+        first = await evaluate("document.querySelector('.titlecard') ? document.fonts.ready.then(() => Math.round(performance.now())) : null");
+        if (first === null) await pause(10);
+      }
+      const bytes = ['index.html'].concat((fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/(?:src|href)="([^"]+)"/g) || []).map((m) => m.slice(m.indexOf('"') + 1, -1)))
+        .filter((f) => fs.existsSync(path.join(ROOT, f))).reduce((sum, f) => sum + fs.statSync(path.join(ROOT, f)).size, 0);
+      console.log('load    title card on screen ' + first + ' ms after navigation; the game loads ' + Math.round(bytes / 1024) + ' KB (limit 1,536 KB)');
+      if (bytes > 1.5 * 1024 * 1024) errors.push('the game loads ' + bytes + ' bytes, over 1.5 MB');
     }
 
     if (privateRun && (!only.length || only.includes('m6p-broken'))) {
