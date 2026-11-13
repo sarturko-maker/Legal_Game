@@ -86,6 +86,13 @@ Newest first. One line each. "Who" is `author` or `claude`.
 | Date | Milestone | Decision | Who | Why |
 |---|---|---|---|---|
 | 2026-11-13 | — | Keep building milestone after milestone overnight. Each milestone is reviewed and gets its own pull request, stacked on the one before, for the author to merge. Check-in questions carry a suggested answer, which stands until the author says otherwise. | author | "Work through the night. I really want to see the game and then I will direct you." |
+| 2026-11-13 | M2 | PACK-FORMAT widened: `{amount}` in a what-if's text is that entry's own amount, and a scenario may have `whatIfNote`, the small print under the what-if lines. `s1` now uses `{amount}` too. | claude | The `s2` script writes `{amount}` and has small print under the list. |
+| 2026-11-13 | M2 | A what-if worth 0 follows the script's ceiling example for every id: "saved you {amount}" becomes "made no difference this time". | claude | The script gives the rule, with an example only for the ceiling. |
+| 2026-11-13 | M2 | `s2` takes its blurb from the first sentence of the script's story paragraph, with 11 minutes. | claude | The script has no blurb. These are the author's words. |
+| 2026-11-13 | M2 | In the count block, 1 reads "1 week" or "1 day", not "1 weeks". | claude | The script's "{weeksLate} weeks" assumes a plural. |
+| 2026-11-13 | M2 | The `s2` bill is one named function in `packs/public.js`. `settle`, `whatIfs` and the ending's headline all call it. Before `terms` is set (walking away) it returns no lines and 0. | claude | The script's what-ifs and headline both work the bill out again. |
+| 2026-11-13 | M2 | A pick is recorded in option order, whatever order the boxes were ticked in. | claude | The same picks always give the same path, as in the fixtures. |
+| 2026-11-13 | M2 | `Mr Dade, Project Manager, look foreman` joins the cast, as in the PACK-FORMAT example. | claude | `s2` needs him. |
 | 2026-11-13 | M1 | A name that ends in a full stop ("Co.") absorbs a full stop straight after its placeholder, so "{entity}. No account." prints "Co. No account.", not "Co.. No account." | claude | The scripts put a full stop after `{entity}`, and the name already ends in one. The script is unchanged. |
 | 2026-11-13 | M1 | The view also carries `small` and `event`. `result()` also returns `tally`, `note` and `reallife`. `B2B.packs` also has `cast()`, `validate()`, `fill()` and `number()`. | claude | The props and the text player need them. Nothing in the contract changes. |
 | 2026-11-13 | M1 | `s1` takes its blurb and minutes (6) from the PACK-FORMAT example. The script says 5 to 7 minutes and has no blurb. | claude | These are the author's own words, from the format document. |

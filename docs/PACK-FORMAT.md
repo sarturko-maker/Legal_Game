@@ -83,7 +83,10 @@ B2B.registerPack({
   It may be called at any node, so it must cope with variables still at their defaults.
   It may also return `tally`, rows of `{ label, value }` shown above the money on the
   ending ledger (the count block in `s2`), and `note`, one line shown under the ledger.
-- `whatIfs` returns `[{ id, state: 'on' | 'off', amount, text }]`.
+- `whatIfs` returns `[{ id, state: 'on' | 'off', amount, text }]`. In `text`, `{amount}` is
+  that entry's own amount.
+- `whatIfNote` is optional: one line of small print under the what-it-was-worth lines,
+  shown only when there is at least one line.
 - `lessons[].when` is `null` or a function of `v` that says whether this lesson bit the
   player on this run.
 

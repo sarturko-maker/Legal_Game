@@ -42,11 +42,14 @@
     c.k = k;
     c.d = d;
     c.settled = settled;
-    c.fill = function (text) { return B2B.packs.fill(text, sources, c.house.currency, where); };
+    // extra, when given, is searched first: a what-if's own {amount}.
+    c.fill = function (text, extra) {
+      return B2B.packs.fill(text, extra ? [extra].concat(sources) : sources, c.house.currency, where);
+    };
     c.paragraphs = function (value) {
       const out = typeof value === 'function' ? value(v, k, d) : value;
       if (out == null) return [];
-      return (Array.isArray(out) ? out : [out]).map(c.fill);
+      return (Array.isArray(out) ? out : [out]).map(function (p) { return c.fill(p); });
     };
     c.line = function (value) { return value == null ? null : c.paragraphs(value).join(' '); };
     return c;
@@ -73,6 +76,23 @@
     return make(state.scenarioId, option.next, vars, state.path.concat([optionId]), state);
   }
 
+  function pick(state, optionIds) {
+    const c = load(state);
+    if (c.node.kind !== 'pick') fail(state, 'pick is only for a pick, and this is a ' + c.node.kind + '.');
+    const ids = [].concat(optionIds);
+    if (ids.length !== c.node.count) fail(state, 'pick exactly ' + c.node.count + ' options, not ' + ids.length + '.');
+    ids.forEach(function (id) {
+      if (!c.node.options.some(function (o) { return o.id === id; })) fail(state, 'there is no option "' + id + '".');
+    });
+    if (new Set(ids).size !== ids.length) fail(state, 'the same option was picked twice.');
+    // Recorded in option order, so the same picks always make the same path.
+    const chosen = c.node.options.filter(function (o) { return ids.indexOf(o.id) >= 0; });
+    const vars = Object.assign.apply(null, [{}, state.vars].concat(chosen.map(function (o) { return o.set || {}; })));
+    const next = typeof c.node.next === 'function' ? c.node.next(vars, c.sc.k || {}) : c.node.next;
+    const step = Object.freeze(chosen.map(function (o) { return o.id; }));
+    return make(state.scenarioId, next, vars, state.path.concat([step]), state);
+  }
+
   // Mood and week stay until a node changes them, so they depend on the nodes passed on the
   // way here. A state holds only the decisions, so the walk is retraced from the start.
   function carried(state) {
@@ -88,7 +108,7 @@
       const step = state.path[s.path.length];
       if (node.kind === 'beat') s = advance(s);
       else if (node.kind === 'choice') s = choose(s, step);
-      else if (node.kind === 'pick') s = B2B.engine.pick(s, step);
+      else if (node.kind === 'pick') s = pick(s, step);
       else break;
     }
     fail(state, 'its path cannot be retraced from the start.');
@@ -137,6 +157,9 @@
       return { text: c.fill(l.text), small: l.small ? c.fill(l.small) : null, bit: bit };
     });
     const reallife = (c.house.reallife && c.house.reallife[c.sc.id]) || c.sc.reallife || '';
+    const whatIfs = (c.sc.whatIfs ? c.sc.whatIfs(c.v, c.k) : []).map(function (w) {
+      return { id: w.id, state: w.state, amount: w.amount, text: c.fill(w.text, { amount: w.amount }) };
+    });
     return {
       lines: (s.lines || []).map(function (line) {
         return { id: line.id, label: c.fill(line.label), amount: line.amount, detail: c.line(line.detail) };
@@ -146,9 +169,8 @@
         return { label: c.fill(row.label), value: typeof row.value === 'number' ? row.value : c.fill(row.value) };
       }),
       note: c.line(s.note),
-      whatIfs: (c.sc.whatIfs ? c.sc.whatIfs(c.v, c.k) : []).map(function (w) {
-        return { id: w.id, state: w.state, amount: w.amount, text: c.fill(w.text) };
-      }),
+      whatIfs: whatIfs,
+      whatIfNote: whatIfs.length ? c.line(c.sc.whatIfNote) : null,
       lessons: lessons.filter(function (l) { return l.bit; })
         .concat(lessons.filter(function (l) { return !l.bit; })).slice(0, 4),
       reallife: c.fill(reallife)
@@ -165,7 +187,7 @@
         state = advance(state);
       } else {
         if (used >= path.length) fail(state, 'the path runs out at this ' + kind + '.');
-        state = kind === 'choice' ? choose(state, path[used]) : B2B.engine.pick(state, path[used]);
+        state = kind === 'choice' ? choose(state, path[used]) : pick(state, path[used]);
         used += 1;
       }
     }
@@ -178,6 +200,7 @@
     view: view,
     advance: advance,
     choose: choose,
+    pick: pick,
     result: result,
     replay: replay
   };

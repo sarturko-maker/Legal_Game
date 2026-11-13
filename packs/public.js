@@ -1,6 +1,63 @@
 // The public pack: general principles only, invented names only (SPEC C8).
 // Scenario wording is copied exactly from docs/scenarios/. Change the script first.
 (function () {
+  // Scenario 2's bill, from "How the bill is worked out" in its script; the same sums as
+  // s2Settle in docs/scenarios/fixtures/make-fixtures.js. Named, because the what-if lines
+  // and the ending's headline work the bill out again.
+  function settle2(v, k) {
+    if (!v.terms) return { lines: [], net: 0 };
+    const unit = k.orderValue * k.ratePct / 100;
+    const negotiated = v.terms === 'negotiated';
+    const approvalWeeks = v.riskStart ? k.riskWeeks : k.approvalLateWeeks;
+    const relief = v.riskStart ? 0 : { none: 0, argued: k.arguedReliefWeeks, amended: k.approvalLateWeeks }[v.paperwork];
+    const weeksLate = Math.max(0, approvalWeeks - relief + k.millSlipWeeks - v.buffer);
+    const graceWeeks = negotiated && v.grace ? k.graceWeeks : 0;
+    const chargeable = negotiated ? Math.max(0, weeksLate - graceWeeks) : weeksLate * 7;
+    const ceiling = k.orderValue * k.capPct / 100;
+    const capped = negotiated && v.cap && chargeable * unit > ceiling;
+    const damages = capped ? ceiling : chargeable * unit;
+    const extra = !(negotiated && v.sole) && weeksLate >= k.extraFromWeeks ? k.extraClaim : 0;
+    const remake = v.riskStart ? k.remakeCost : 0;
+    const bill = damages + extra + remake;
+    const poWeek = k.leadWeeks + v.buffer;
+    const chargeUnit = negotiated ? 'week' : 'day';
+    const count = function (n, placeholder, word) { return placeholder + ' ' + word + (n === 1 ? '' : 's'); };
+
+    // The count block from "The ledger screen".
+    const tally = [{ label: 'Promised', value: 'week {poWeek}' }, { label: 'Delivered', value: 'week {deliveredWeek}' }];
+    if (relief > 0) {
+      tally.push({ label: 'Excused', value: count(relief, '{reliefWeeks}', 'week') + (v.paperwork === 'amended' ? ' by amendment' : ' after argument') });
+    }
+    tally.push({ label: 'Late', value: count(weeksLate, '{weeksLate}', 'week') });
+    if (graceWeeks) tally.push({ label: 'Grace', value: '{graceWeeks} weeks free' });
+    tally.push({ label: 'Charged', value: count(chargeable, '{chargeable}', chargeUnit) + ' at {dayRate}' });
+
+    const lines = [
+      { id: 'margin', label: 'Margin on the order', amount: k.margin },
+      { id: 'damages', label: 'Delay damages', amount: 0 - damages, detail: capped ? 'ceiling reached' : null }
+    ];
+    if (extra > 0) lines.push({ id: 'extra', label: '{contractorShort}\'s other claims for the delay', amount: 0 - extra });
+    if (remake > 0) lines.push({ id: 'remake', label: 'Scrapped cable, made again', amount: 0 - remake });
+
+    return {
+      poWeek: poWeek,
+      dueWeek: poWeek + relief,
+      deliveredWeek: k.leadWeeks + approvalWeeks + k.millSlipWeeks,
+      reliefWeeks: relief,
+      weeksLate: weeksLate,
+      chargeable: chargeable,
+      chargeUnit: chargeUnit,
+      damages: damages,
+      capped: capped,
+      extra: extra,
+      remake: remake,
+      bill: bill,
+      net: k.margin - bill,
+      lines: lines,
+      tally: tally
+    };
+  }
+
   B2B.registerPack({
     id: 'public',
     title: 'General principles',
@@ -18,7 +75,8 @@
     cast: {
       narrator: { name: '' },
       clerk: { name: 'the telegraph clerk', look: 'clerk' },
-      vance: { name: 'Ms Vance', title: 'Attorney', look: 'lawyer' }
+      vance: { name: 'Ms Vance', title: 'Attorney', look: 'lawyer' },
+      dade: { name: 'Mr Dade', title: 'Project Manager', look: 'foreman' }
     },
 
     hide: [],
@@ -211,11 +269,6 @@
           }
         },
 
-        // What the cap saves, for the what-if lines.
-        derive: function (v, k) {
-          return { capSaving: k.claim - k.cap };
-        },
-
         settle: function (v, k) {
           if (v.how === 'cloned' || v.how === 'agreed' || v.how === 'caved') {
             return { lines: [
@@ -239,11 +292,11 @@
         whatIfs: function (v, k) {
           if (v.how === 'cloned' || v.how === 'agreed' || v.how === 'caved') {
             return [{ id: 'cap', state: 'off', amount: k.claim - k.cap,
-              text: 'One line capping your liability at {cap} would have saved {capSaving}.' }];
+              text: 'One line capping your liability at {cap} would have saved {amount}.' }];
           }
           if (v.how === 'capped') {
             return [{ id: 'cap', state: 'on', amount: k.claim - k.cap,
-              text: 'The one-line cap saved you {capSaving}.' }];
+              text: 'The one-line cap saved you {amount}.' }];
           }
           return [];
         },
@@ -256,6 +309,438 @@
           { text: 'Legal\'s first answer is the full answer. No time for it? Go back and ask for the smallest change that makes the deal safe.', small: '', when: null }
         ],
         reallife: 'Not sure a customer is set up on your terms? Check before you ship. If the customer sends its own conditions, send them to your legal team with the order.'
+      },
+
+      // docs/scenarios/02-the-delay-clause.md
+      {
+        id: 's2',
+        title: 'The delay clause',
+        blurb: 'An EPC contractor invites you to quote for a large cable order on its own conditions, with a delay clause it says is not negotiable.',
+        tags: ['EPC contractor', 'projects', 'delay damages', 'delivery'],
+        minutes: 11,
+
+        skin: {
+          contractor: 'Ironhorse Construction Co.',
+          contractorShort: 'Ironhorse',
+          pike: 'Pike',
+          dade: 'Dade',
+          engineer: 'Dr Lindqvist',
+          engineerShort: 'Lindqvist',
+          mill: 'Lakeside Cable Works',
+          product: 'cable',
+          poNumber: '7730',
+          lawyer: 'Ms Vance'
+        },
+        k: {
+          orderValue: 2000000, margin: 200000, ratePct: 1, capPct: 5, graceWeeks: 2, leadWeeks: 12,
+          bufferWeeks: 2, millSlipWeeks: 3, approvalLateWeeks: 8, arguedReliefWeeks: 4, riskWeeks: 5,
+          remakeCost: 120000, extraClaim: 400000, extraFromWeeks: 4
+        },
+        vars: { terms: null, cap: false, sole: false, grace: false, asked: false, buffer: 0, route: null, paperwork: 'none', riskStart: false },
+        start: 'packet',
+
+        nodes: {
+          packet: {
+            kind: 'beat', at: 'telegraph', show: 'telegram', mood: 'day',
+            from: '{contractor}',
+            text: 'INVITATION TO QUOTE STOP 400 DRUMS OF CABLE FOR THE NORTHERN LINE STOP OUR CONDITIONS OF PURCHASE FOLLOW BY POST STOP NOTE CLAUSE 11 DELAY STOP NOT NEGOTIABLE STOP {pike} PURCHASING AGENT',
+            next: 'sums'
+          },
+          sums: {
+            kind: 'beat', at: 'supply', show: 'ledger',
+            lead: 'You work the numbers at the counter.',
+            text: ['Order value: {orderValue}.', 'Your margin: {margin}.'],
+            foot: 'The biggest order of the year.',
+            next: 'clause'
+          },
+          clause: {
+            kind: 'beat', at: 'supply', show: 'page', face: 'up',
+            lead: 'The conditions arrive. Somebody at {contractor} has underlined clause 11.',
+            text: '11. DELAY. If the Supplier delivers late it shall pay the Contractor 1% of the Order value for each day of delay. This does not limit any other right of the Contractor.',
+            next: 'cA'
+          },
+          cA: {
+            kind: 'choice', at: 'supply',
+            prompt: 'The conditions are on your counter. What do you do?',
+            options: [
+              { id: 'sign', label: 'Sign and return them.',
+                note: 'It is their standard form. Everyone on the line signs it.',
+                set: { terms: 'draft' }, next: 'signed_draft' },
+              { id: 'refuse', label: 'Wire back: we do not accept delay damages.',
+                note: 'Simple. Clean.',
+                next: 'refused' },
+              { id: 'law', label: 'Walk the conditions over to the Law Office.',
+                note: 'It is their paper, not yours.',
+                set: { terms: 'negotiated' }, next: 'law_intro' }
+            ]
+          },
+          refused: {
+            kind: 'beat', at: 'supply', show: 'telegram', mood: 'dusk',
+            from: '{contractor}',
+            text: 'EVERY SUPPLIER ON THIS LINE CARRIES DELAY DAMAGES STOP THE RAILROAD HOLDS THE SAME CLAUSE OVER US STOP NO CLAUSE NO ORDER STOP {pike}',
+            next: 'cA2'
+          },
+          cA2: {
+            kind: 'choice', at: 'supply',
+            prompt: 'No clause, no order. What now?',
+            options: [
+              { id: 'sign', label: 'Sign their conditions as they stand.',
+                note: '{orderValue} is {orderValue}.',
+                set: { terms: 'draft' }, next: 'signed_draft' },
+              { id: 'walk', label: 'Walk away from the order.',
+                note: 'Let somebody else carry clause 11.',
+                next: 'end_lost' },
+              { id: 'law', label: 'Take it to the Law Office.',
+                note: 'There may be something between yes and no.',
+                set: { terms: 'negotiated' }, next: 'law_intro' }
+            ]
+          },
+          signed_draft: {
+            kind: 'beat', at: 'supply', show: 'page', face: 'up', stamp: 'SIGNED',
+            text: '11. DELAY. If the Supplier delivers late it shall pay the Contractor 1% of the Order value for each day of delay. This does not limit any other right of the Contractor.',
+            foot: 'You sign. Clause 11 stands exactly as printed.',
+            next: 'flow'
+          },
+          law_intro: {
+            kind: 'beat', at: 'law', show: 'say', who: 'vance',
+            text: 'They will not take the clause out. They cannot: the railroad holds the same one over them. So we do not fight the clause. We shape it.',
+            next: 'law_card'
+          },
+          law_card: {
+            kind: 'beat', at: 'law', show: 'card',
+            title: 'DELAY DAMAGES: FOUR QUESTIONS',
+            small: 'Your contract may call them liquidated damages, or LDs.',
+            text: [
+              '1. THE CLOCK. Daily or weekly, and at what rate? One percent a day is {dayRate} a day. Your whole margin is gone in ten days.',
+              '2. THE CEILING. Is there a most you can ever owe?',
+              '3. THE ONLY REMEDY. Are delay damages all they can claim for lateness, or only the start?',
+              '4. THE GRACE PERIOD. Does the clock start on day one?'
+            ],
+            next: 'rate_out'
+          },
+          rate_out: {
+            kind: 'beat', at: 'law', show: 'telegram',
+            to: '{contractor}',
+            text: 'CLAUSE 11 STOP WE PROPOSE HALF OF ONE PERCENT PER WEEK IN PLACE OF ONE PERCENT PER DAY',
+            next: 'rate_in'
+          },
+          rate_in: {
+            kind: 'beat', at: 'law', show: 'telegram',
+            from: '{contractor}',
+            text: 'WEEKLY AGREED STOP ONE PERCENT PER WEEK STOP THAT IS FINAL ON THE RATE STOP {pike}',
+            foot: '"Take it. {dayRate} a week instead of {dayRate} a day. The rate matters less than the next three questions."',
+            next: 'pick'
+          },
+          pick: {
+            kind: 'pick', count: 2, at: 'law',
+            prompt: '{pike} will move on two more points. Not three. It is your deal: which two?',
+            who: 'vance',
+            hint: 'Your margin is {margin}. Keep that number in your head while you choose.',
+            options: [
+              { id: 'cap', label: 'A ceiling', set: { cap: true },
+                text: 'Delay damages can never total more than 5% of the order value: {ceiling}.' },
+              { id: 'sole', label: 'The only remedy', set: { sole: true },
+                text: 'Delay damages are all they can claim for lateness. Nothing on top.' },
+              { id: 'grace', label: 'A grace period', set: { grace: true },
+                text: 'The first two weeks late cost nothing.' }
+            ],
+            next: 'agreed'
+          },
+          agreed: {
+            kind: 'beat', at: 'law', show: 'page', face: 'up', stamp: 'AGREED',
+            lead: '{pike} wires one word: AGREED. Clause 11 now reads:',
+            // Built from the picks, in the order the script gives.
+            text: function (v) {
+              return '11. DELAY. If the Supplier delivers late it shall pay the Contractor 1% of the Order value for each full week of delay' +
+                (v.grace ? ', not counting the first two weeks.' : '.') +
+                (v.cap ? ' Delay damages shall not exceed 5% of the Order value in total.' : '') +
+                (v.sole ? ' Delay damages are the Contractor\'s only remedy for late delivery.' : ' This does not limit any other right of the Contractor.');
+            },
+            next: 'flow'
+          },
+          flow: {
+            kind: 'choice', at: 'supply',
+            prompt: 'The cable comes from {mill}. Their lead time is 12 weeks. What date do you promise {contractorShort}?',
+            options: [
+              { id: 'quote12', label: 'Promise 12 weeks and place the order with the mill.',
+                note: '{mill} have never let you down.',
+                set: { buffer: 0, asked: false }, next: 'po' },
+              { id: 'ask', label: 'First ask the mill to carry the same delay clause.',
+                note: 'If you carry it, so should they.',
+                set: { asked: true }, next: 'mill_no' }
+            ]
+          },
+          mill_no: {
+            kind: 'beat', at: 'supply', show: 'telegram',
+            from: '{mill}',
+            text: 'WE DO NOT ACCEPT DELAY DAMAGES FROM ANY CUSTOMER STOP LEAD TIME 12 WEEKS ESTIMATED STOP BEST ENDEAVOURS ONLY STOP',
+            foot: 'So the gap is yours. You owe {contractorShort} for lateness, and the mill owes you nothing.',
+            next: 'cF2'
+          },
+          cF2: {
+            kind: 'choice', at: 'supply',
+            prompt: 'The mill will not carry the risk. What date do you promise?',
+            options: [
+              { id: 'quote12', label: '12 weeks. The mill\'s date is your date.',
+                note: 'A shorter date wins orders.',
+                set: { buffer: 0 }, next: 'po' },
+              { id: 'quote14', label: '14 weeks. Two weeks of slack of your own.',
+                note: 'A longer date might lose this one.',
+                set: { buffer: 2 }, next: 'fourteen' }
+            ]
+          },
+          fourteen: {
+            kind: 'beat', at: 'supply', show: 'telegram',
+            from: '{contractor}',
+            text: 'FOURTEEN WEEKS STOP NOT A DAY MORE STOP THE PROGRAMME HAS NO SLACK AFTER THAT STOP {pike}',
+            next: 'po'
+          },
+          po: {
+            kind: 'beat', at: 'supply', show: 'page', face: 'up', week: 0,
+            title: 'PURCHASE ORDER {poNumber}',
+            text: function (v) {
+              return [
+                '400 drums of cable. Delivery at the railhead: week {poWeek}.',
+                'Clause 4. Production must not start until the Consulting Engineer has approved the samples.',
+                v.terms === 'draft' ? 'Clause 11. Delay: as printed.' : 'Clause 11. Delay: as agreed.',
+                'Clause 19. This order may be changed only by a written amendment signed by the Purchasing Agent.'
+              ];
+            },
+            next: 'samples'
+          },
+          samples: {
+            kind: 'beat', at: 'supply', show: 'note', week: 1,
+            text: 'Week 1. The samples go east to the Consulting Engineer. The programme allows him until week 3. The mill waits for his answer.',
+            next: 'silence'
+          },
+          silence: {
+            kind: 'beat', at: 'supply', show: 'telegram', week: 6, mood: 'dusk',
+            from: '{mill}',
+            text: 'WEEK SIX STOP STILL NO APPROVAL STOP WE CANNOT START THE RUN WITHOUT IT STOP EVERY WEEK WE WAIT IS A WEEK ON YOUR DATE STOP',
+            next: 'cD'
+          },
+          cD: {
+            kind: 'choice', at: 'supply', week: 6,
+            prompt: 'The Engineer is silent and your date is slipping. What do you do?',
+            options: [
+              { id: 'verbal', label: 'Go out to the site and tell the Project Manager the date will move.',
+                note: 'A word with the man who runs the job.',
+                set: { route: 'verbal', paperwork: 'none' }, next: 'd_verbal' },
+              { id: 'wire', label: 'Wire the Project Manager and keep his reply.',
+                note: 'Something in writing.',
+                set: { route: 'wire', paperwork: 'argued' }, next: 'd_wire_out' },
+              { id: 'formal', label: 'Take him a written delay notice and ask for the order date to be amended.',
+                note: 'By the book. Slower.',
+                next: 'd_formal' },
+              { id: 'risk', label: 'Tell the mill to start the run now, without approval.',
+                note: 'Protect the date.',
+                set: { route: 'risk', riskStart: true }, next: 'd_risk' }
+            ]
+          },
+          d_verbal: {
+            kind: 'beat', at: 'yard', show: 'say', who: 'dade',
+            text: 'Yeah, that\'s fine. Everybody is waiting on the Engineer. Don\'t worry about the date.',
+            next: 'approval'
+          },
+          d_wire_out: {
+            kind: 'beat', at: 'supply', show: 'telegram',
+            to: '{dade}, {contractor}',
+            text: 'SAMPLES STILL WITH THE ENGINEER STOP OUR DELIVERY DATE WILL MOVE WEEK FOR WEEK STOP PLEASE CONFIRM',
+            next: 'd_wire_in'
+          },
+          d_wire_in: {
+            kind: 'beat', at: 'supply', show: 'telegram',
+            from: '{contractor}',
+            text: 'UNDERSTOOD STOP FINE BY ME STOP {dade}',
+            foot: 'You file his reply.',
+            next: 'approval'
+          },
+          d_formal: {
+            kind: 'beat', at: 'yard', show: 'say', who: 'dade', mood: 'storm',
+            lead: 'You put the notice on his desk.',
+            text: 'I don\'t have time for paperwork. I have told you it\'s fine. Just get on with it.',
+            next: 'cD3'
+          },
+          cD3: {
+            kind: 'choice', at: 'yard',
+            prompt: 'He will not touch the paperwork. What do you do?',
+            options: [
+              { id: 'takeword', label: 'Take his word. He runs the job.',
+                note: 'You did serve the notice.',
+                set: { route: 'tookword', paperwork: 'argued' }, next: 'approval' },
+              { id: 'standfirm', label: 'Stay put: no signature, no new date.',
+                note: 'He has to sign something.',
+                set: { route: 'stoodfirm', paperwork: 'argued' }, next: 'd_standfirm' },
+              { id: 'law', label: 'Go and ask {lawyer}.',
+                note: 'There may be a quicker way to the same signature.',
+                set: { route: 'amended', paperwork: 'amended' }, next: 'd_law' }
+            ]
+          },
+          d_standfirm: {
+            kind: 'beat', at: 'yard', show: 'say', who: 'dade',
+            text: 'Then we have a problem. I can\'t sign that. I build railroads. I don\'t change purchase orders. Leave it on the desk.',
+            foot: 'A month later your notice is still on his desk.',
+            next: 'approval'
+          },
+          d_law: {
+            kind: 'beat', at: 'law', show: 'say', who: 'vance',
+            text: '{dade} can say "fine" all day. Read clause 19: only the Purchasing Agent can change the order. So make it easy for the Purchasing Agent. One page. One change: the delivery date moves by every day the Engineer is late. Nothing else. Send it to {pike} with the receipt for your samples.',
+            next: 'd_amended'
+          },
+          d_amended: {
+            kind: 'beat', at: 'law', show: 'telegram', stamp: 'AMENDED', mood: 'day',
+            from: '{contractor}',
+            text: 'AMENDMENT ONE TO PO {poNumber} SIGNED STOP DELIVERY DATE MOVES DAY FOR DAY WITH THE ENGINEERS APPROVAL STOP {pike}',
+            next: 'approval'
+          },
+          d_risk: {
+            kind: 'beat', at: 'supply', show: 'note', week: 6,
+            text: 'You wire the mill: start the run. The machines turn. Clause 4 says they should not.',
+            next: 'risk_comments'
+          },
+          risk_comments: {
+            kind: 'beat', at: 'supply', show: 'telegram', week: 11,
+            from: '{engineer}',
+            text: 'SAMPLES APPROVED WITH ONE CHANGE STOP MARKING ON THE SHEATH EVERY YARD NOT EVERY TEN STOP {engineerShort}',
+            foot: 'A third of the run is already made the old way. It is scrap. Making it again costs {remakeCost} and two of the weeks you thought you had saved.',
+            next: 'mill_slip'
+          },
+          approval: {
+            kind: 'beat', at: 'supply', show: 'telegram', week: 11,
+            from: '{engineer}',
+            text: 'SAMPLES APPROVED STOP PROCEED STOP {engineerShort}',
+            foot: 'Eight weeks late. The mill starts the run.',
+            next: 'mill_slip'
+          },
+          mill_slip: {
+            kind: 'beat', at: 'supply', show: 'telegram', week: 17,
+            from: '{mill}',
+            text: 'COPPER DELIVERY LATE STOP THREE WEEKS LOST STOP REGRET STOP',
+            foot: function (v) {
+              if (v.buffer === 2) return 'Your two weeks of slack swallow two of them.';
+              if (v.asked) return 'You knew the mill would not stand behind its date, and you promised it anyway. All three weeks are yours.';
+              return 'You promised the mill\'s date as your own. All three weeks are yours.';
+            },
+            next: 'delivered'
+          },
+          delivered: {
+            kind: 'beat', at: 'depot', show: 'note', week: '{deliveredWeek}', mood: 'day', event: 'trainIn',
+            text: 'Week {deliveredWeek}. Four hundred drums of cable on the platform. The order said week {poWeek}.',
+            next: 'claim'
+          },
+          claim: {
+            kind: 'beat', at: 'supply', show: 'page', face: 'up',
+            title: '{contractor}. COMMERCIAL OFFICE.',
+            text: function (v) {
+              if (v.paperwork === 'amended') return 'Delivery date under Amendment 1: week {dueWeek}. Delivered: week {deliveredWeek}. Any delay damages due under clause 11 will be deducted from your invoice.';
+              if (v.riskStart) return 'Delivery date under Purchase Order {poNumber}: week {poWeek}. Delivered: week {deliveredWeek}. Production began before approval, contrary to clause 4. Delay damages under clause 11 will be deducted from your invoice.';
+              return 'Delivery date under Purchase Order {poNumber}: week {poWeek}. Delivered: week {deliveredWeek}. Delay damages under clause 11 will be deducted from your invoice.';
+            },
+            next: function (v) {
+              return ['verbal', 'wire', 'tookword', 'stoodfirm'].indexOf(v.route) >= 0 ? 'protest' : 'end_settled';
+            }
+          },
+          protest: {
+            kind: 'beat', at: 'supply', show: 'telegram', mood: 'storm',
+            lead: 'You wire back: MR {dade} AGREED THE DATE WOULD MOVE.',
+            from: '{contractor}',
+            text: 'MR {dade} BUILDS RAILROADS STOP HE DOES NOT AMEND PURCHASE ORDERS STOP CLAUSE 19 STOP THE ORDER DATE GOVERNS STOP COMMERCIAL OFFICE',
+            foot: function (v) {
+              return {
+                verbal: 'You have nothing in writing. {dade} has moved to another job and remembers nothing.',
+                wire: 'You have his wire. It takes four months of argument. They concede half the Engineer\'s delay: four weeks.',
+                tookword: 'You have your notice, and the date you served it. It takes four months of argument. They concede half the Engineer\'s delay: four weeks.',
+                stoodfirm: 'You have your notice, still unsigned. It takes four months of argument. They concede half the Engineer\'s delay: four weeks.'
+              }[v.route];
+            },
+            next: 'end_settled'
+          },
+          end_settled: {
+            kind: 'ending', result: 'settled', at: 'supply', show: 'ledger',
+            headline: function (v, k) {
+              const net = settle2(v, k).net;
+              if (net >= 180000) return 'DELIVERED. PAID. DONE.';
+              if (net >= 100000) return 'LATE, AND STILL IN PROFIT';
+              if (net >= 0) return 'A YEAR\'S WORK FOR SMALL CHANGE';
+              if (net >= -999999) return 'THE CLAUSE ATE THE DEAL';
+              return 'ONE PERCENT A DAY';
+            }
+          },
+          end_lost: {
+            kind: 'ending', result: 'lost', at: 'supply', show: 'note', mood: 'dusk',
+            text: 'You walk away. {contractor} places the order with a rival, clause 11 and all.'
+          }
+        },
+
+        derive: function (v, k) {
+          return { dayRate: k.orderValue * k.ratePct / 100, ceiling: k.orderValue * k.capPct / 100 };
+        },
+        settle: settle2,
+        // The script's wording table, "What each protection was worth": [saved, made no difference].
+        whatIfs: function (v, k) {
+          const words = {
+            cap: {
+              on: ['Your ceiling saved you {amount}.', 'Your ceiling made no difference this time.'],
+              off: ['A ceiling would have saved you {amount}.', 'A ceiling would have made no difference this time.'] },
+            sole: {
+              on: ['"Only remedy" saved you {amount}.', '"Only remedy" made no difference this time.'],
+              off: ['"Only remedy" would have saved you {amount}.', '"Only remedy" would have made no difference this time.'] },
+            grace: {
+              on: ['Your grace period saved you {amount}.', 'Your grace period made no difference this time.'],
+              off: ['A grace period would have saved you {amount}.', 'A grace period would have made no difference this time.'] },
+            buffer: {
+              on: ['Your two weeks of slack saved you {amount}.', 'Your two weeks of slack made no difference this time.'],
+              off: ['Two weeks of slack would have saved you {amount}.', 'Two weeks of slack would have made no difference this time.'] },
+            amendment: {
+              on: ['The signed amendment saved you {amount}.', 'The signed amendment made no difference this time.'],
+              off: ['A signed amendment would have saved you {amount}.', 'A signed amendment would have made no difference this time.'] },
+            wait: {
+              off: ['Waiting for approval, with a signed amendment, would have saved you {amount}.',
+                'Waiting for approval, with a signed amendment, would have made no difference this time.'] },
+            negotiate: {
+              off: ['Negotiating the clause (weekly, with a ceiling and "only remedy") would have saved you {amount}.',
+                'Negotiating the clause (weekly, with a ceiling and "only remedy") would have made no difference this time.'] }
+          };
+          if (!v.terms) return [];
+          const bill = settle2(v, k).bill;
+          const out = [];
+          const add = function (id, state, alt) {
+            const other = settle2(Object.assign({}, v, alt), k).bill;
+            const amount = state === 'on' ? other - bill : bill - other;
+            out.push({ id: id, state: state, amount: amount, text: words[id][state][amount === 0 ? 1 : 0] });
+          };
+          if (v.terms === 'negotiated') {
+            add('cap', v.cap ? 'on' : 'off', { cap: !v.cap });
+            add('sole', v.sole ? 'on' : 'off', { sole: !v.sole });
+            add('grace', v.grace ? 'on' : 'off', { grace: !v.grace });
+          } else {
+            add('negotiate', 'off', { terms: 'negotiated', cap: true, sole: true, grace: false });
+          }
+          add('buffer', v.buffer ? 'on' : 'off', { buffer: v.buffer ? 0 : k.bufferWeeks });
+          if (v.riskStart) add('wait', 'off', { riskStart: false, paperwork: 'amended' });
+          else if (v.paperwork === 'amended') add('amendment', 'on', { paperwork: 'none' });
+          else add('amendment', 'off', { paperwork: 'amended' });
+          return out;
+        },
+        whatIfNote: 'Each line takes one protection on its own. They overlap, so the lines do not add up.',
+
+        lessons: [
+          { text: 'You rarely get delay damages struck out. You can nearly always shape them: weekly not daily, a low rate, a ceiling, "only remedy", a grace period.',
+            when: function (v) { return v.terms === 'draft'; } },
+          { text: 'A ceiling below your margin, with delay damages as the only remedy, means lateness can cost you profit but cannot turn the deal into a loss.',
+            when: function (v) { return v.terms === 'negotiated' && !(v.cap && v.sole); } },
+          { text: 'A ceiling on its own is not enough. If delay damages are not the only remedy, the customer can claim its other losses on top.',
+            when: function (v) { return v.cap && !v.sole; } },
+          { text: 'If your vendor will not carry the clause, the gap is yours. Buy time: promise a later date than your vendor promises you.',
+            when: function (v) { return v.buffer === 0; } },
+          { text: '"That\'s fine" does not move the date in the order. A signed change from the person the contract names does.',
+            when: function (v) { return v.paperwork !== 'amended' && !v.riskStart; } },
+          { text: 'Keep the record as you go: what you sent, when you sent it, when the answer came. You will need it to show that their delay caused yours.',
+            when: function (v) { return v.paperwork === 'argued'; } },
+          { text: 'Do not start work the contract says needs approval. You turn their delay into your cost.',
+            when: function (v) { return v.riskStart; } }
+        ],
+        reallife: 'A customer\'s contract with a delay clause goes to your legal team before you quote. During the job, tell them as soon as the customer\'s own delay starts to move your date.'
       }
     ]
   });
