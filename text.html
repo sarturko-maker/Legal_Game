@@ -144,12 +144,12 @@
 
         add(box, 'h3', 'What it was worth');
         r.whatIfs.forEach(function (w) { add(box, 'p', w.text); });
-        if (!r.whatIfs.length) add(box, 'p', '(nothing shown)', 'note');
+        if (!r.whatIfs.length) add(box, 'p', '[no what-if line on this ending]', 'note');
 
         add(box, 'h3', 'Lessons');
         const list = add(box, 'ol');
         r.lessons.forEach(function (l) {
-          const li = add(list, 'li', l.text + (l.bit ? '  (this one bit you)' : ''));
+          const li = add(list, 'li', l.text + (l.bit ? '  [bit you on this run]' : ''));
           if (l.small) add(li, 'div', l.small, 'note');
         });
         const real = add(box, 'div', null, 'real');

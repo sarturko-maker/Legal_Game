@@ -85,6 +85,13 @@ Newest first. One line each. "Who" is `author` or `claude`.
 
 | Date | Milestone | Decision | Who | Why |
 |---|---|---|---|---|
+| 2026-11-13 | — | Keep building milestone after milestone overnight. Each milestone is reviewed and gets its own pull request, stacked on the one before, for the author to merge. Check-in questions carry a suggested answer, which stands until the author says otherwise. | author | "Work through the night. I really want to see the game and then I will direct you." |
+| 2026-11-13 | M1 | A name that ends in a full stop ("Co.") absorbs a full stop straight after its placeholder, so "{entity}. No account." prints "Co. No account.", not "Co.. No account." | claude | The scripts put a full stop after `{entity}`, and the name already ends in one. The script is unchanged. |
+| 2026-11-13 | M1 | The view also carries `small` and `event`. `result()` also returns `tally`, `note` and `reallife`. `B2B.packs` also has `cast()`, `validate()`, `fill()` and `number()`. | claude | The props and the text player need them. Nothing in the contract changes. |
+| 2026-11-13 | M1 | `s1` takes its blurb and minutes (6) from the PACK-FORMAT example. The script says 5 to 7 minutes and has no blurb. | claude | These are the author's own words, from the format document. |
+| 2026-11-13 | M1 | Mood and week carry from node to node. The engine works them out by retracing the state's path from the start. | claude | The state stays exactly `{ scenarioId, nodeId, vars, path, done }`. |
+| 2026-11-13 | M1 | Amounts print with a true minus sign (−) and thousands commas, as in the scripts' ledger tables. | claude | It matches the scripts. |
+| 2026-11-13 | M1 | `tools/load.js` loads the core and the public pack into Node for the check, the tests and the transcript. | claude | One list of scripts, in `index.html` order, instead of three. |
 | 2026-11-12 | check-in 0 | D1 to D6: every default kept. | author | |
 | 2026-11-12 | check-in 0 | From M3, `tools/shots.js` drives the installed Chrome over its DevTools pipe from plain Node. No `puppeteer-core`. | author | No dependency. |
 | 2026-11-12 | check-in 0 | PACK-FORMAT widened so the scripts fit: `who` on `page`, `headline` on `ledger`, `stamp` on `telegram`, `small` on `card`. `settle` may return `tally` (the count block) and `note` (a line under the ledger). | author | The old table would have dropped the author's words. |
