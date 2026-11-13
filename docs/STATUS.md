@@ -12,8 +12,7 @@ the end of every milestone. Keep it under 40 lines.
 
 ## What exists
 
-- M0: `index.html` title page, `tools/check.js`, `tools/shots.js` (installed Chrome), a
-  Stop hook that runs the check.
+- M0: `index.html` title, `tools/check.js`, `tools/shots.js`, a Stop hook running the check.
 - M1: `src/core/packs.js` (registry, placeholders, validation rules 1-7),
   `src/core/engine.js` (SPEC 5.1), `packs/public.js`, `text.html`, `tools/transcript.js`,
   `tools/load.js`, `tools/tests/engine.js`.
@@ -35,7 +34,6 @@ the end of every milestone. Keep it under 40 lines.
 ## For later milestones
 
 - M3: `tools/shots.js` drives Chrome over its DevTools pipe (decided at check-in 0).
-- M4: SPEC 6.3 turns face-down pages over "at the same place", but `s1` puts them down at
-  `supply` and turns them at `law`. Raise it at M4.
+- M4: SPEC 6.3 turns face-down pages "at the same place"; `s1` turns them at another. Raise.
 - M6: the engine keeps the last scenario started under each id. When a private pack
   replaces `s1`, make sure the game starts the replacement.
