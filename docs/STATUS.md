@@ -8,9 +8,7 @@ the end of every milestone. Keep it under 40 lines.
 - **Current milestone:** M2, scenario 2 in text, built and in review (branch `m2-scenario-2`).
   Working overnight at the author's request.
 - **Last check-in:** M1, pull request #2 open (branch `m1-engine-s1`). Not merged yet.
-- **Branches are stacked:** each milestone branches from the one before. The author merges
-  them in order.
-- **The author wants to move through the milestones quickly, and to see the game.**
+- **Stacked branches**, one per milestone, for the author to merge in order. He wants speed.
 
 ## What exists
 
@@ -25,8 +23,7 @@ the end of every milestone. Keep it under 40 lines.
 ## Commands that work today
 
 - `node tools/check.js`: scan, packs, fixtures, tests, repository.
-- `node tools/transcript.js s1 pack law law`
-- `node tools/shots.js`, `node docs/scenarios/fixtures/make-fixtures.js`
+- `node tools/transcript.js s1 pack law law`, `node tools/shots.js`, `npm run fixtures`.
 - Open `text.html` from disk to play in plain text.
 
 ## Open questions for the author (suggested answers stand meanwhile)
