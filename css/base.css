@@ -24,13 +24,6 @@ body {
   font-family: var(--text);
 }
 
-/* The title page of M0, kept for pages without a stage. */
-body > h1 {
-  margin: 0;
-  font-size: 8vw;
-  font-weight: normal;
-}
-
 /* The logical stage is 1920x1080, scaled to fit and centred by stage.js. */
 #stage {
   position: absolute;

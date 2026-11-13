@@ -40,9 +40,10 @@ With a room, read the paper aloud, let the room argue, and take a vote before pr
 number. The money appears only at the end, on the ledger. After it come what each
 protection was worth, the lessons, and what to do in real life.
 
-**Replays.** With a seed, the same deals come back with other customers, other names, and
-every amount scaled up or down together. The same seed always plays the same deals.
-Wildcards on, with no seed, draws a new one each time.
+**Replays.** With a seed, each deal draws one of three versions: the script's own, or one
+of two others with a different customer, other names, and every amount scaled up or down
+together. The same seed always plays the same deals. Wildcards on, with no seed, draws a
+new seed each time.
 
 **Reduced motion.** If the computer is set to reduce motion, the game cuts and fades
 instead of walking, typing or moving the scenery.
@@ -69,18 +70,28 @@ tracks it. If the file is missing, the game runs without it. The rules are in
 
 ## How to add a scenario
 
-1. **Write the script.** Write it in `docs/scenarios/` in the same form as the two that
-   are there. It holds every word, number and outcome, plus its ledger, lessons and
-   debrief. The writing rules are in `docs/PACK-FORMAT.md`, section 9.
-2. **Add the expected results.** Add its paths to
-   `docs/scenarios/fixtures/make-fixtures.js` and run it. The fixtures are made from the
-   script's own sums, so they check the pack, not the other way round.
-3. **Copy the script into a pack**, word for word. Use `packs/public.js` for general
-   principles and invented names, `packs/private.js` for anything else.
-   `docs/PACK-FORMAT.md`, section 5, says how each line of a script becomes a field.
+The writing rules are in `docs/PACK-FORMAT.md`, section 9. Section 5 says how each line of
+a script becomes a field in a pack.
+
+**A public scenario** has general principles and invented names only.
+
+1. **Write the script** in `docs/scenarios/`, in the same form as the two that are there.
+   It holds every word, number and outcome, plus its ledger, lessons and debrief.
+2. **Add the expected results.** `docs/scenarios/fixtures/make-fixtures.js` works out
+   each scenario's sums on its own, separately from the pack. Write the new scenario's
+   sums and paths there, then run it.
+3. **Copy the script into `packs/public.js`**, word for word.
 4. **Check it.** Run `node tools/check.js`. It plays every path, checks every
    placeholder and every sum, and replays the fixtures.
-5. **Read it through.** Do this in `text.html`, then play it in `index.html`.
+5. **Read it through** in `text.html`, then play it in `index.html`.
+
+**A private scenario** stays off this repository, script and all.
+
+1. Keep its script wherever your private material lives.
+2. Write it into `packs/private.js`, as `p1` is written in the example.
+3. Check it: `node tools/check.js --pack packs/private.js`. This plays every path and
+   checks every placeholder and every sum. It has no fixtures.
+4. Play it through in `index.html`. `text.html` shows the public pack only.
 
 ## For developers
 

@@ -240,7 +240,8 @@
         const ids = node.options.map(function (o) { return o.id; });
         combinations(ids, node.count).forEach(function (combo) { visit(engine.pick(state, combo), steps + 1); });
       } catch (err) {
-        say(where, err.message);
+        // The engine's message names the scenario and node again; where already says them.
+        say(where, err.message.replace(/^Scenario \S+, node \S+: /, ''));
       }
     };
     try {

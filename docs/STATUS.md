@@ -23,7 +23,7 @@ the end of every milestone. Keep it under 40 lines.
 - `node tools/check.js [--pack packs/private.js]`: scan, packs, fixtures, tests, repository.
 - `node tools/transcript.js s1 pack law law`, `npm run fixtures`.
 - `node tools/shots.js [names]`: screenshots into `shots/`. Flags:
-  - `--paths`: every fixture path and whole sessions through the screen, and a seed twice.
+  - `--paths`: 11 fixture paths and whole sessions through the screen, and a seed twice.
   - `--keys`: keyboard only, mouse, reduced motion.
   - `--audit`: contrast, focus, reduced motion (SPEC 13).
   - `--frames`: frame time, load time, size.
