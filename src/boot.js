@@ -119,7 +119,7 @@
   }
 
   // With no seed and wildcards off, the deals are the scripts exactly (SPEC 9). Wildcards on
-  // with no seed draws a seed, so every session differs; the year end shows it.
+  // with no seed draws a seed, so every session differs; the record keeps it.
   function startSession(scenarios, options) {
     session.chosen = scenarios;
     session.seed = options.seed != null ? options.seed : options.wildcards ? Math.floor(Math.random() * 100000) : null;
@@ -176,7 +176,7 @@
     mode = 'yearend';
     const record = session.record();
     note('year end\nrecord ' + JSON.stringify(record));
-    screen = B2B.screens.yearEnd(stage.props, session.deals, record.total, house, session.seed, function () {
+    screen = B2B.screens.yearEnd(stage.props, session.deals, record.total, house, function () {
       startSession(session.chosen, session.options);
     }, setup);
   }

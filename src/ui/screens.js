@@ -116,9 +116,8 @@
     return { stop: function () { B2B.props.leave(prop); } };
   }
 
-  // The year end: one row per deal, the total, Play again and Back to set up (SPEC 4). The
-  // seed, when there was one, so the room can play the same deals again.
-  function yearEnd(parent, rows, total, house, seed, onAgain, onSetup) {
+  // The year end: one row per deal, the total, Play again and Back to set up (SPEC 4).
+  function yearEnd(parent, rows, total, house, onAgain, onSetup) {
     const prop = sheet(parent, 'book yearend', 'year');
     el('h2', '', prop, 'Year end');
     const table = el('table', 'accounts', prop);
@@ -137,7 +136,6 @@
     el('td', '', tr, 'Total');
     el('td', '', tr, '');
     amount(tr, total);
-    if (seed != null) el('p', 'small seedline', prop, 'Seed ' + seed);
     const row = el('div', 'buttons', prop);
     const again = button(row, 'big', 'Play again', onAgain);
     button(row, 'big quiet', 'Back to set up', onSetup);

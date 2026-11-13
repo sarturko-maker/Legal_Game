@@ -422,6 +422,20 @@ async function main() {
       const f = await evaluate('B2B.debug.walkFrameTime()');
       console.log('walk    ' + f.frames + ' frames, average ' + f.averageMs + ' ms, worst ' + f.worstMs + ' ms (headless, 1920x1080)');
     }
+
+    if (privateRun && (!only.length || only.includes('m6p-broken'))) {
+      // A private pack that fails validation: the game shows the problems and does not start.
+      const text = fs.readFileSync(PRIVATE, 'utf8');
+      fs.writeFileSync(PRIVATE, text.replace("next: 'ask'", "next: 'nowhere'"));
+      await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+      await page('Page.navigate', { url });
+      await pause(1200);
+      const shown = await evaluate("document.body.textContent.includes('The packs have problems') && document.body.textContent.includes('nowhere')");
+      if (!shown) errors.push('broken private pack: no problem screen');
+      const { data } = await page('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(OUT, 'm6p-broken-1280x720.png'), Buffer.from(data, 'base64'));
+      console.log('broken  ' + (shown ? 'ok  ' : 'FAIL') + ' a private pack that fails validation shows the problem screen');
+    }
   } finally {
     if (privateRun) fs.rmSync(PRIVATE, { force: true });
     cdp.child.kill();

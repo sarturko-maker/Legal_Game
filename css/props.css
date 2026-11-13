@@ -578,7 +578,6 @@
   color: var(--ink);
   font: 28px/1.2 var(--type);
 }
-.yearend .seedline { margin: 14px 0 0; }
 .large .props > .setup { padding: 30px 80px 34px; }
 .large .setup .start { margin-top: 20px; }
 .setup fieldset { margin: 0; padding: 0; border: 0; }
