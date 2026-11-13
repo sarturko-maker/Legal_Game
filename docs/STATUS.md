@@ -5,10 +5,8 @@ the end of every milestone. Keep it under 40 lines.
 
 ## Now
 
-- **Current milestone:** M3, the art slice, built and in review (branch `m3-art-slice`).
-  Working overnight at the author's request.
-- **Open pull requests:** #2 M1, #3 M2 (on M1). Not merged yet.
-- **Stacked branches**, one per milestone, for the author to merge in order. He wants speed.
+- **Current milestone:** M3, the art slice, in review (branch `m3-art-slice`). Overnight run.
+- **Open pull requests**, stacked, for the author to merge in order: #2 M1, #3 M2.
 
 ## What exists
 
@@ -19,14 +17,14 @@ the end of every milestone. Keep it under 40 lines.
 - M2: `s2` in the pack, `pick` in the engine and in `text.html`. 150 fixture paths pass.
 - M3: `index.html` plays a fixed demo: `css/fonts.css` (+ `css/licences/`), `base.css`,
   `props.css`, `src/render/{town,stage,figures,props}.js`, `src/boot.js`. Street x 1,400-4,000.
-- In `src/core/`, not even a comment may say `Date`, `window`, `document` or `Math.random`.
+- `src/core/`: not even a comment may say `Date`, `window`, `document` or `Math.random`.
 
 ## Commands that work today
 
 - `node tools/check.js`: scan, packs, fixtures, tests, repository.
 - `node tools/transcript.js s1 pack law law`, `npm run fixtures`.
 - `node tools/shots.js [--frames] [--keys]`: DevTools pipe, debug hooks, both sizes.
-- Open `text.html` from disk to play in plain text.
+- Open `text.html` (plain text) or `index.html` (the M3 demo) from disk.
 
 ## Open questions for the author (suggested answers stand meanwhile)
 
