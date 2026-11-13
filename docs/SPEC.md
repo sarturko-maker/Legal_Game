@@ -187,7 +187,7 @@ exists and how it behaves.
 | id | Sign | Used for |
 |---|---|---|
 | `depot` | DEPOT | Goods leave and arrive by train. |
-| `telegraph` | TERRITORIAL TELEGRAPH | Orders and enquiries arrive. |
+| `telegraph` | the telegraph company's name from `house.telegraph` | Orders and enquiries arrive. |
 | `supply` | the firm's name from `house.firm` | The player's own counter: the account book, the sums, most decisions, the ledger. |
 | `law` | LAW OFFICE | Legal. |
 | `courthouse` | COURTHOUSE | Claims. |
@@ -266,13 +266,15 @@ not-picked state that does not rely on colour alone.
 
 Shown after every ending, in this order, each on its own screen.
 
-1. **Ledger.** The scenario's own count (if it has one, as in `s2`), the lines from
-   `settle`, and the result. The result is the last thing to appear.
+1. **Ledger.** The scenario's own count (`tally` from `settle`, if it has one, as in
+   `s2`), the lines from `settle`, and the result. The result is the last thing to
+   appear. A `note` from `settle`, if there is one, sits under it.
 2. **What each protection was worth.** One line per entry from `whatIfs`. The wording
    rules are in each scenario script.
 3. **Debrief.** Up to four lessons, those whose `when` is true first, then the rest in
-   order. Then the "In real life" box: `house.reallife[scenarioId]` if a pack sets it,
-   otherwise the scenario's own `reallife`.
+   order. On an ending whose `result` is `lost`, no lesson counts as having bitten: they
+   are shown in order. Then the "In real life" box: `house.reallife[scenarioId]` if a pack
+   sets it, otherwise the scenario's own `reallife`.
 
 ## 9. Variation (milestone M6, not before)
 

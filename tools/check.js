@@ -4,6 +4,7 @@
  * The Stop hook runs it at the end of every turn, so it has to stay fast.
  *
  * Run: node tools/check.js
+ * TODO (M6): --pack <file> checks one extra pack.
  */
 'use strict';
 const fs = require('fs');
@@ -11,6 +12,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+const FIXTURES = path.join(ROOT, 'docs', 'scenarios', 'fixtures');
 
 // What the game loads. Only .html, .css and .js are read by the browser, so licence
 // texts kept beside the fonts are not scanned.
@@ -101,6 +103,55 @@ function runTests() {
   return { passed, problems };
 }
 
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function sameKeys(a, b) {
+  const keys = Object.keys(Object.assign({}, a, b));
+  return keys.every((key) => same(a[key], b[key]));
+}
+
+// PACK-FORMAT 6, rule 8: replay every fixture path through the real engine and pack.
+function checkFixtures(B2B) {
+  const problems = [];
+  const notes = [];
+  let paths = 0;
+  const files = fs.readdirSync(FIXTURES).filter((f) => f.endsWith('-paths.json')).sort();
+  for (const file of files) {
+    const fx = JSON.parse(fs.readFileSync(path.join(FIXTURES, file), 'utf8'));
+    const scenario = B2B.packs.scenarios().find((sc) => sc.id === fx.scenario);
+    if (!scenario) {
+      notes.push(fx.scenario + ' is in no pack yet');
+      continue;
+    }
+    if (!sameKeys(scenario.k, fx.k)) problems.push(file + '  the pack\'s k differs from the fixture\'s k');
+    for (const p of fx.paths) {
+      const at = file + '  ' + p.path.map((step) => [].concat(step).join(',')).join(' ') + ': ';
+      paths += 1;
+      let state;
+      try {
+        state = B2B.engine.replay(scenario, B2B.packs.house(), p.path);
+      } catch (err) {
+        problems.push(at + err.message);
+        continue;
+      }
+      if (state.nodeId !== p.ending) problems.push(at + 'ends at ' + state.nodeId + ', expected ' + p.ending);
+      if (p.vars) {
+        for (const key of Object.keys(p.vars)) {
+          if (!same(state.vars[key], p.vars[key])) problems.push(at + 'var ' + key + ' is ' + JSON.stringify(state.vars[key]) + ', expected ' + JSON.stringify(p.vars[key]));
+        }
+      }
+      const settled = scenario.settle(state.vars, scenario.k);
+      for (const key of Object.keys(p.expect)) {
+        const got = key === 'lines' ? settled.lines.map((l) => ({ id: l.id, amount: l.amount })) : settled[key];
+        if (!same(got, p.expect[key])) problems.push(at + key + ' is ' + JSON.stringify(got) + ', expected ' + JSON.stringify(p.expect[key]));
+      }
+      const whatIfs = B2B.engine.result(state).whatIfs.map((w) => ({ id: w.id, state: w.state, amount: w.amount }));
+      if (!same(whatIfs, p.whatIfs)) problems.push(at + 'what-ifs are ' + JSON.stringify(whatIfs) + ', expected ' + JSON.stringify(p.whatIfs));
+    }
+  }
+  return { summary: count(paths, 'path') + ' replayed' + (notes.length ? '; ' + notes.join('; ') : ''), problems };
+}
+
 function count(n, word) {
   return n + ' ' + word + (n === 1 ? '' : 's');
 }
@@ -116,6 +167,20 @@ function main() {
   const files = gameFiles();
   const scanned = files.flatMap(scanFile);
   report('scan', count(files.length, 'file') + ', ' + (scanned.length ? count(scanned.length, 'problem') : 'no problems'), scanned);
+
+  let B2B = null;
+  try {
+    B2B = require('./load')();
+  } catch (err) {
+    report('packs', 'the game scripts did not load', [err.stack.split('\n').slice(0, 3).join(' / ')]);
+  }
+  if (B2B) {
+    const scenarios = B2B.packs.scenarios().map((sc) => sc.id);
+    const packProblems = B2B.packs.problems();
+    report('packs', count(scenarios.length, 'scenario') + ' (' + scenarios.join(', ') + '), ' + (packProblems.length ? count(packProblems.length, 'problem') : 'no problems'), packProblems);
+    const fixtures = checkFixtures(B2B);
+    report('fixtures', fixtures.summary, fixtures.problems);
+  }
 
   const repo = checkRepository();
   report('repository', repo.note, repo.problems);

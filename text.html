@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Back to Back: text player</title>
+  <style>
+    body { margin: 2em auto; max-width: 46em; padding: 0 1em; background: #F1E4C9; color: #2B211C;
+      font: 18px/1.5 Georgia, 'Times New Roman', serif; }
+    .meta { color: #5E4B3C; font: 13px/1.4 monospace; margin-top: 2em; }
+    .lead, .foot { font-style: italic; }
+    .telegram { text-transform: uppercase; font-family: monospace; }
+    .headline { font-weight: bold; text-transform: uppercase; }
+    .stamp { border: 2px solid; display: inline-block; padding: 0 .4em; font-weight: bold; }
+    .note { font-size: 15px; color: #5E4B3C; }
+    .chosen { font-weight: bold; }
+    .problems { color: #8B1E1E; }
+    button { display: block; margin: .4em 0; padding: .3em .6em; font: inherit; text-align: left; }
+    table { border-collapse: collapse; }
+    td { padding: .1em 1em .1em 0; }
+    td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+    .real { border: 1px solid; padding: .5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>Back to Back: text player</h1>
+  <main id="out"></main>
+  <script src="src/core/namespace.js"></script>
+  <script src="src/core/packs.js"></script>
+  <script src="src/core/engine.js"></script>
+  <script src="packs/public.js"></script>
+  <script>
+    // A plain player for proof-reading scripts. Every step stays on the page, like a
+    // transcript; only the newest step has buttons.
+    (function () {
+      const out = document.getElementById('out');
+      const house = B2B.packs.house();
+      const cast = B2B.packs.cast();
+      const money = function (n) { return (n > 0 ? '+' : '') + B2B.packs.number(n, house.currency); };
+
+      function add(parent, tag, text, cls) {
+        const el = document.createElement(tag);
+        if (text != null) el.textContent = text;
+        if (cls) el.className = cls;
+        parent.appendChild(el);
+        return el;
+      }
+
+      function button(parent, label, onClick) {
+        const b = add(parent, 'button', label);
+        b.addEventListener('click', onClick);
+        return b;
+      }
+
+      function picker() {
+        out.textContent = '';
+        const problems = B2B.packs.problems();
+        if (problems.length) {
+          add(out, 'h2', 'The packs have problems', 'problems');
+          const list = add(out, 'ul', null, 'problems');
+          problems.forEach(function (p) { add(list, 'li', p); });
+          return;
+        }
+        add(out, 'h2', 'Scenarios');
+        B2B.packs.scenarios().forEach(function (sc, i) {
+          const box = add(out, 'section');
+          add(box, 'h3', sc.title);
+          add(box, 'p', sc.blurb);
+          add(box, 'p', sc.tags.join(' · ') + ' · about ' + sc.minutes + ' minutes', 'note');
+          const b = button(box, 'Play ' + sc.title, function () { play(sc); });
+          if (i === 0) b.focus();
+        });
+      }
+
+      function play(sc) {
+        out.textContent = '';
+        add(out, 'h2', sc.title);
+        step(sc, B2B.engine.start(sc, house));
+      }
+
+      function step(sc, state) {
+        const v = B2B.engine.view(state);
+        const box = add(out, 'section');
+        add(box, 'p', '[' + state.nodeId + '] ' + [v.kind, v.at, v.show, v.mood, v.week == null ? null : 'week ' + v.week,
+          v.face && 'face ' + v.face, v.event].filter(Boolean).join(' · ') + '   path: ' + (state.path.join(' ') || '-'), 'meta');
+        if (v.lead) add(box, 'p', v.lead, 'lead');
+        if (v.who) add(box, 'p', (cast[v.who] ? cast[v.who].name : v.who) + ':');
+        if (v.from) add(box, 'p', 'From: ' + v.from);
+        if (v.to) add(box, 'p', 'To: ' + v.to);
+        if (v.title) add(box, 'p', v.title, 'headline');
+        if (v.small) add(box, 'p', v.small, 'note');
+        if (v.headline) add(box, 'p', v.headline, 'headline');
+        if (v.stamp) add(add(box, 'p'), 'span', v.stamp, 'stamp');
+        v.text.forEach(function (p) { add(box, 'p', p, v.show === 'telegram' ? 'telegram' : null); });
+        if (v.foot) add(box, 'p', v.foot, 'foot');
+        if (v.prompt) add(box, 'p', v.prompt, 'headline');
+        if (v.hint) add(box, 'p', v.hint);
+
+        const controls = add(box, 'div');
+        const done = function (line) {
+          controls.textContent = '';
+          if (line) add(controls, 'p', line, 'chosen');
+        };
+        let first;
+        if (v.kind === 'beat') {
+          first = button(controls, 'Continue', function () { done(); step(sc, B2B.engine.advance(state)); });
+        } else if (v.kind === 'choice') {
+          v.options.forEach(function (o, i) {
+            const b = button(controls, o.label + (o.note ? '  (' + o.note + ')' : ''), function () {
+              done('> ' + o.label);
+              step(sc, B2B.engine.choose(state, o.id));
+            });
+            if (i === 0) first = b;
+          });
+        } else if (v.kind === 'ending') {
+          first = button(controls, 'See the ledger', function () { done(); ledger(sc, state); });
+        }
+        if (first) first.focus();
+        box.scrollIntoView({ block: 'end' });
+      }
+
+      function ledger(sc, state) {
+        const r = B2B.engine.result(state);
+        const box = add(out, 'section');
+        add(box, 'h3', 'Ledger');
+        if (r.tally.length) {
+          const tally = add(box, 'table');
+          r.tally.forEach(function (row) {
+            const tr = add(tally, 'tr');
+            add(tr, 'td', row.label);
+            add(tr, 'td', typeof row.value === 'number' ? B2B.packs.number(row.value) : row.value, 'amount');
+          });
+        }
+        const table = add(box, 'table');
+        r.lines.forEach(function (line) {
+          const tr = add(table, 'tr');
+          add(tr, 'td', line.label + (line.detail ? ' (' + line.detail + ')' : ''));
+          add(tr, 'td', money(line.amount), 'amount');
+        });
+        const total = add(table, 'tr');
+        add(add(total, 'td'), 'strong', 'Result');
+        add(add(total, 'td', null, 'amount'), 'strong', money(r.net));
+        if (r.note) add(box, 'p', r.note, 'note');
+
+        add(box, 'h3', 'What it was worth');
+        r.whatIfs.forEach(function (w) { add(box, 'p', w.text); });
+        if (!r.whatIfs.length) add(box, 'p', '[no what-if line on this ending]', 'note');
+
+        add(box, 'h3', 'Lessons');
+        const list = add(box, 'ol');
+        r.lessons.forEach(function (l) {
+          const li = add(list, 'li', l.text + (l.bit ? '  [bit you on this run]' : ''));
+          if (l.small) add(li, 'div', l.small, 'note');
+        });
+        const real = add(box, 'div', null, 'real');
+        add(real, 'h3', 'In real life');
+        add(real, 'p', r.reallife);
+
+        button(box, 'Play ' + sc.title + ' again', function () { play(sc); }).focus();
+        button(box, 'All scenarios', picker);
+        box.scrollIntoView({ block: 'start' });
+      }
+
+      picker();
+    })();
+  </script>
+</body>
+</html>

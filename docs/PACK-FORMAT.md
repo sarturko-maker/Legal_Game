@@ -25,6 +25,8 @@ B2B.registerPack({
   house: {
     firm: 'Last Shot Supply Co.',     // the player's company
     town: 'Caveat Creek',
+    paper: 'The Caveat Creek Courier', // the newspaper's masthead
+    telegraph: 'Territorial Telegraph', // the telegraph company: its forms and its sign
     currency: '',                     // printed before amounts; empty in the public pack
     reallife: {}                      // optional: scenario id -> text for the "In real life" box
   },
@@ -79,6 +81,8 @@ B2B.registerPack({
 - `settle` returns `{ lines: [{ id, label, amount, detail? }], net }` plus any other fields
   the scenario wants to use as placeholders. `net` must equal the sum of the line amounts.
   It may be called at any node, so it must cope with variables still at their defaults.
+  It may also return `tally`, rows of `{ label, value }` shown above the money on the
+  ending ledger (the count block in `s2`), and `note`, one line shown under the ledger.
 - `whatIfs` returns `[{ id, state: 'on' | 'off', amount, text }]`.
 - `lessons[].when` is `null` or a function of `v` that says whether this lesson bit the
   player on this run.
@@ -103,8 +107,9 @@ A scenario is a set of nodes. Four kinds.
 | `text` | beat, ending | A string, an array of paragraphs, or a function `(v, k, d) => string or array`. `d` is the derived values. |
 | `lead`, `foot` | beat, ending | One line above and one line below the prop. Same types as `text`. |
 | `from`, `to` | telegram | Sender, or addressee for an outgoing one. `to` makes the telegram outgoing. |
-| `who` | say, hints | Cast id of the speaker. |
-| `title`, `headline`, `stamp` | page, card, paper, poster | The prop's heading, and a rubber stamp across it. |
+| `who` | say, page | Cast id of the speaker, or of the person handling the page. |
+| `title`, `headline`, `stamp` | page, card, paper, poster; also `headline` on ledger, `stamp` on telegram | The prop's heading, and a rubber stamp across it. |
+| `small` | card | One line of small print under the title. |
 | `face` | page | `up` or `down`. A page shown face down shows only its `title`. |
 | `mood` | beat, ending | `dawn`, `day`, `dusk`, `night`, `storm`. Stays until another node changes it. |
 | `event` | beat | A stage event played before the prop: `trainOut` or `trainIn`. Only at `depot`. |
